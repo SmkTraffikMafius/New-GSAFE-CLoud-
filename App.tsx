@@ -24,7 +24,8 @@ const App: React.FC = () => {
     const [authError, setAuthError] = useState<string | undefined>();
     const [adminView, setAdminView] = useState<'LIST' | 'DASHBOARD' | 'CONTROL_CENTER'>('LIST');
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-    const [emailToast, setEmailToast] = useState<{to: string, subject: string} | null>(null);
+    const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+    const [emailError, setEmailError] = useState<string | null>(null);
     const [darkMode, setDarkMode] = useState(false); // DARK MODE STATE
 
     const toggleLanguage = () => {
@@ -111,10 +112,12 @@ const App: React.FC = () => {
     const sendNotificationEmail = async (to: string, subject: string, body: string) => {
         try {
             await api.email.send(to, subject, body);
-            setEmailToast({ to, subject });
-            setTimeout(() => setEmailToast(null), 4000);
-        } catch (e) {
-            console.error("Fallo al enviar email simulado", e);
+            setEmailSuccess(`Correo de credenciales enviado exitosamente a ${to}`);
+            setTimeout(() => setEmailSuccess(null), 6000);
+        } catch (e: any) {
+            console.error("Fallo al enviar email", e);
+            setEmailError(e.message || "Error al enviar el correo. Verifique la configuración SMTP.");
+            setTimeout(() => setEmailError(null), 8000);
         }
     };
 
@@ -231,6 +234,26 @@ const App: React.FC = () => {
         setIsLoading(false);
     };
 
+    const handleDeleteWorker = async (workerId: string) => {
+        if (!currentUser || currentUser.role !== 'CONTRACTOR' || !currentUser.companyId) return;
+        if (window.confirm("¿Está seguro de que desea eliminar a este trabajador? Esta acción no se puede deshacer.")) {
+            setIsLoading(true);
+            await api.companies.deleteWorker(currentUser.companyId, workerId);
+            await refreshData();
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteVehicle = async (vehicleId: string) => {
+        if (!currentUser || currentUser.role !== 'CONTRACTOR' || !currentUser.companyId) return;
+        if (window.confirm("¿Está seguro de que desea eliminar este vehículo? Esta acción no se puede deshacer.")) {
+            setIsLoading(true);
+            await api.companies.deleteVehicle(currentUser.companyId, vehicleId);
+            await refreshData();
+            setIsLoading(false);
+        }
+    };
+
     // --- CARGA DE DOCUMENTOS CON ANÁLISIS IA + EXTERNO ---
     const handleUpload = async (reqId: string, entityId: string, file: File, projectId: string, startDate: string, expiryDate: string) => {
         // 1. Iniciar Estado de "Analizando"
@@ -262,17 +285,33 @@ const App: React.FC = () => {
         // 3. Ejecutar Análisis IA (Híbrido: Visual + API Externa + Identity Check)
         const aiResult = await api.ai.analyzeDocument(file, reqDef, expiryDate, expectedData);
         
-        // 4. Crear el objeto documento con los resultados de la IA
+        // 4. Crear el objeto documento con los resultados de la IA y guardar el archivo en IndexedDB
         const finalExpiryDate = aiResult.detectedExpiry || expiryDate;
         const finalStartDate = aiResult.detectedStart || startDate;
+        const docId = `doc_${Date.now()}`;
+
+        try {
+            const readFileAsBase64 = (f: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(f);
+                });
+            };
+            const base64Data = await readFileAsBase64(file);
+            await api.db.saveFile(docId, base64Data);
+        } catch (dbErr) {
+            console.error("Failed to save file to IndexedDB", dbErr);
+        }
 
         const newDoc: DocumentSubmission = {
-            id: `doc_${Date.now()}`,
+            id: docId,
             requirementId: reqId,
             entityId: entityId,
             projectId: projectId, 
             fileName: file.name,
-            fileUrl: URL.createObjectURL(file),
+            fileUrl: URL.createObjectURL(file), // Mantiene temporal para visualización instantánea rápida
             uploadDate: new Date().toISOString(),
             // APLICAR RESULTADO IA:
             status: aiResult.status,
@@ -435,17 +474,31 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* Toast Email */}
-            {emailToast && (
+            {/* Toast de Éxito para Email */}
+            {emailSuccess && (
                 <div className="fixed bottom-6 right-6 z-[60] max-w-sm w-full bg-slate-800 text-white p-4 rounded-lg shadow-2xl border-l-4 border-green-400 animate-in slide-in-from-right-full duration-300">
                     <div className="flex items-start gap-3">
                         <div className="bg-green-500/20 p-2 rounded-full">
                              <MailCheck size={20} className="text-green-400" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-sm">Correo Enviado Exitosamente</h4>
-                            <p className="text-xs text-gray-300 mt-1">Para: {emailToast.to}</p>
-                            <p className="text-xs text-gray-400 italic mt-0.5 truncate w-60">{emailToast.subject}</p>
+                            <h4 className="font-bold text-sm">Éxito</h4>
+                            <p className="text-xs text-gray-300 mt-1">{emailSuccess}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast de Error para Email */}
+            {emailError && (
+                <div className="fixed bottom-6 right-6 z-[60] max-w-sm w-full bg-slate-800 text-white p-4 rounded-lg shadow-2xl border-l-4 border-red-400 animate-in slide-in-from-right-full duration-300">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-red-500/20 p-2 rounded-full">
+                             <X size={20} className="text-red-400" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-sm">Error al enviar email</h4>
+                            <p className="text-xs text-gray-300 mt-1">{emailError}</p>
                         </div>
                     </div>
                 </div>
@@ -550,6 +603,8 @@ const App: React.FC = () => {
                             onUpload={handleUpload} 
                             onAddWorker={handleAddWorker}
                             onAddVehicle={handleAddVehicle}
+                            onDeleteWorker={handleDeleteWorker}
+                            onDeleteVehicle={handleDeleteVehicle}
                             onRefresh={refreshData} // NUEVO: Pasamos la función de refresco
                         />
                     ) : (

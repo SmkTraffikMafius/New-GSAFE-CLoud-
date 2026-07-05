@@ -41,6 +41,31 @@ export const CompanyManagement: React.FC<Props> = ({
     const [selectedCriticalWorks, setSelectedCriticalWorks] = useState<CriticalWork[]>([]); // Estado para trabajos críticos
     const [createdCreds, setCreatedCreds] = useState<{name: string, email: string, pass: string} | null>(null);
 
+    // --- CONFIGURACIÓN Y DIAGNÓSTICO SMTP ---
+    const [showSmtpModal, setShowSmtpModal] = useState(false);
+    const [testEmail, setTestEmail] = useState('');
+    const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+    const [testMessage, setTestMessage] = useState('');
+
+    const handleTestSmtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!testEmail) return;
+        setTestStatus('sending');
+        setTestMessage('');
+        try {
+            await api.email.send(
+                testEmail,
+                "GSAFE - Prueba de Conexión de Correo SMTP",
+                `¡Hola!\n\nEste es un correo de prueba enviado desde la plataforma de control de contratistas GSAFE Cloud (www.contractorehscontrol.com).\n\nSi estás recibiendo este mensaje, significa que el servidor emisor de correos y tus credenciales SMTP están correctamente configuradas y son completamente funcionales.\n\n¡Felicidades! Tu aplicación está lista para enviar credenciales reales a los nuevos contratistas registrados.\n\nFecha de envío: ${new Date().toLocaleString()}`
+            );
+            setTestStatus('success');
+            setTestMessage("¡Correo de prueba enviado con éxito! Verifique la bandeja de entrada (y la carpeta de spam o correo no deseado).");
+        } catch (error: any) {
+            setTestStatus('error');
+            setTestMessage(error.message || "Error al conectar con el servidor SMTP o credenciales inválidas.");
+        }
+    };
+
     // --- CÁLCULO DE ESTADÍSTICAS GLOBALES ---
     const stats = useMemo(() => {
         let totalWorkers = 0;
@@ -194,10 +219,64 @@ export const CompanyManagement: React.FC<Props> = ({
         reader.readAsText(file);
     };
 
+    const expiringDocs = useMemo(() => {
+        let count = 0;
+        let details: string[] = [];
+        const checkDoc = (doc: DocumentSubmission, contextName: string) => {
+            if (doc.status === DocStatus.APPROVED && doc.expiryDate) {
+                const expiry = new Date(doc.expiryDate);
+                expiry.setMinutes(expiry.getMinutes() + expiry.getTimezoneOffset());
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const timeDiff = expiry.getTime() - today.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                if (daysDiff > 0 && daysDiff <= 30) {
+                    count++;
+                    if (details.length < 5) {
+                        details.push(`${doc.fileName || 'Documento'} (${contextName}) - Vence en ${daysDiff} días`);
+                    }
+                }
+            }
+        };
+
+        companies.forEach(company => {
+            company.documents.forEach(d => checkDoc(d, `Empresa: ${company.name}`));
+            company.workers.forEach(w => w.documents.forEach(d => checkDoc(d, `${company.name} - Trabajador: ${w.firstName} ${w.lastName}`)));
+            company.vehicles.forEach(v => v.documents.forEach(d => checkDoc(d, `${company.name} - Vehículo: ${v.plate}`)));
+        });
+
+        return { count, details };
+    }, [companies]);
+
     // --- RENDER ---
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             
+            {expiringDocs.count > 0 && (
+                <div className="bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-500 p-4 rounded-r-lg shadow-sm">
+                    <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                                Acción Requerida: {expiringDocs.count} {expiringDocs.count === 1 ? 'documento está' : 'documentos están'} por vencer en los próximos 30 días en toda la red
+                            </h3>
+                            <div className="mt-2 text-sm text-orange-700 dark:text-orange-200">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {expiringDocs.details.map((detail, idx) => (
+                                        <li key={idx}>{detail}</li>
+                                    ))}
+                                    {expiringDocs.count > 5 && (
+                                        <li>...y {expiringDocs.count - 5} más</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* 1. HEADER & ACTIONS */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                 <div>
@@ -214,6 +293,9 @@ export const CompanyManagement: React.FC<Props> = ({
                                 <Upload size={14}/> Importar BD
                                 <input type="file" ref={fileImportRef} onChange={handleImportDB} accept=".json" className="hidden" />
                             </label>
+                            <button onClick={() => setShowSmtpModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-white rounded-md transition-all shadow-sm cursor-pointer" title="Configuración de Servidor de Correos (SMTP)">
+                                <Mail size={14} className="text-blue-500" /> Configuración SMTP
+                            </button>
                         </div>
 
                          {onGoToControlCenter && (
@@ -499,6 +581,123 @@ export const CompanyManagement: React.FC<Props> = ({
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">Agregar</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* INTERACTIVE SMTP SETTINGS & DIAGNOSTICS MODAL */}
+            {showSmtpModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 md:p-8 relative animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+                        <button onClick={() => { setShowSmtpModal(false); setTestStatus('idle'); setTestMessage(''); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+                        
+                        <div className="flex items-center gap-3 border-b pb-4 mb-6">
+                            <div className="bg-blue-100 p-2.5 rounded-xl text-blue-600">
+                                <Mail size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">Configuración y Diagnóstico SMTP</h3>
+                                <p className="text-sm text-gray-500">Requerimientos y pruebas para el envío real de correos electrónicos.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pr-2 flex-grow">
+                            {/* Left: Settings Instructions */}
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="font-bold text-gray-900 text-sm mb-2">1. Variables de Entorno Requeridas</h4>
+                                    <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                                        Para que la aplicación envíe correos electrónicos reales a los contratistas al momento de su creación, debes configurar las siguientes variables en tu entorno de servidor o archivo <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded font-mono text-[11px] font-bold">.env</code>:
+                                    </p>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-xs space-y-2 text-slate-800">
+                                        <div><span className="text-blue-600 font-bold">SMTP_HOST</span>=smtp.hostinger.com <span className="text-gray-400 italic text-[11px]">// O smtp.gmail.com</span></div>
+                                        <div><span className="text-blue-600 font-bold">SMTP_PORT</span>=587 <span className="text-gray-400 italic text-[11px]">// 587 (STARTTLS) o 465 (SSL)</span></div>
+                                        <div><span className="text-blue-600 font-bold">SMTP_USER</span>=tu_correo@contractorehscontrol.com</div>
+                                        <div><span className="text-blue-600 font-bold">SMTP_PASS</span>=tu_contraseña_real_o_token</div>
+                                        <div><span className="text-blue-600 font-bold">SMTP_FROM</span>=tu_correo@contractorehscontrol.com</div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h4 className="font-bold text-gray-900 text-sm mb-2">2. Guía de Configuración por Proveedor</h4>
+                                    <div className="space-y-3 text-xs text-gray-600">
+                                        <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                            <strong className="text-blue-800">Opción A: Hostinger / cPanel (Recomendado)</strong>
+                                            <ol className="list-decimal pl-4 mt-1 space-y-1">
+                                                <li>Ingresa a tu panel de Hostinger y crea una cuenta de correo (ej: <code className="font-bold text-gray-800">soporte@contractorehscontrol.com</code>).</li>
+                                                <li>Usa <code className="font-bold">smtp.hostinger.com</code> como Host, puerto <code className="font-bold">465</code> (SSL) o <code className="font-bold">587</code> (STARTTLS).</li>
+                                                <li>El usuario y contraseña son exactamente los de la cuenta de correo creada.</li>
+                                            </ol>
+                                        </div>
+                                        <div className="p-3 bg-yellow-50/50 rounded-lg border border-yellow-100">
+                                            <strong className="text-yellow-800">Opción B: Correo Gmail Personal</strong>
+                                            <ol className="list-decimal pl-4 mt-1 space-y-1">
+                                                <li>Activa "Verificación en Dos Pasos" en tu cuenta de Google.</li>
+                                                <li>Ingresa a "Seguridad" y genera una <strong>"Contraseña de aplicación"</strong>.</li>
+                                                <li>Usa <code className="font-bold">smtp.gmail.com</code>, puerto <code className="font-bold">587</code>, y como contraseña ingresa el token de 16 letras generado por Google (sin espacios).</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Test delivery panel */}
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between h-fit">
+                                <div>
+                                    <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5">
+                                        <ShieldCheck className="text-green-600" size={16} /> Diagnóstico y Envío de Prueba
+                                    </h4>
+                                    <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+                                        Ingresa una dirección de correo para enviar un mensaje de prueba real y comprobar si la plataforma puede conectarse exitosamente con tu servidor SMTP actual.
+                                    </p>
+
+                                    <form onSubmit={handleTestSmtp} className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Correo Destinatario</label>
+                                            <input 
+                                                required 
+                                                type="email" 
+                                                value={testEmail} 
+                                                onChange={e => setTestEmail(e.target.value)} 
+                                                placeholder="ejemplo@correo.com" 
+                                                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                                            />
+                                        </div>
+                                        <button 
+                                            type="submit" 
+                                            disabled={testStatus === 'sending'}
+                                            className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-sm text-white shadow-md transition-colors ${testStatus === 'sending' ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                        >
+                                            {testStatus === 'sending' ? 'Enviando...' : 'Enviar Correo de Prueba'}
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {testStatus !== 'idle' && (
+                                    <div className={`mt-6 p-4 rounded-xl border text-xs leading-relaxed ${
+                                        testStatus === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                                        testStatus === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                                        'bg-blue-50 border-blue-100 text-blue-800 animate-pulse'
+                                    }`}>
+                                        <div className="font-bold mb-1 flex items-center gap-1">
+                                            {testStatus === 'success' && "✓ Conexión SMTP Exitosa"}
+                                            {testStatus === 'error' && "✗ Fallo de Conexión / Credenciales"}
+                                            {testStatus === 'sending' && "Conectando con Servidor SMTP..."}
+                                        </div>
+                                        <p>{testMessage || "Se está enviando el paquete SMTP a través del puerto configurado."}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end border-t pt-4 mt-6">
+                            <button 
+                                onClick={() => { setShowSmtpModal(false); setTestStatus('idle'); setTestMessage(''); }} 
+                                className="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer"
+                            >
+                                Entendido
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

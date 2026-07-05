@@ -53,6 +53,7 @@ export enum VerificationSource {
     PRT_CL = 'PRT_CL',         // Plantas Revisión Técnica
     SII = 'SII',               // Servicio Impuestos Internos
     PREVIRED = 'PREVIRED',     // Previred
+    ACHS = 'ACHS',             // Asociación Chilena de Seguridad
     MANUAL = 'MANUAL'          // Auditor Humano
 }
 

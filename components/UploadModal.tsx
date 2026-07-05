@@ -15,6 +15,7 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
     const [file, setFile] = useState<File | null>(null);
     const [startDate, setStartDate] = useState(initialStartDate);
     const [expiryDate, setExpiryDate] = useState(initialExpiryDate);
+    const [isDetecting, setIsDetecting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Reset state when opening/closing or changing initial props
@@ -23,6 +24,7 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
             setStartDate(initialStartDate);
             setExpiryDate(initialExpiryDate);
             setFile(null);
+            setIsDetecting(false);
         }
     }, [isOpen, initialStartDate, initialExpiryDate]);
 
@@ -48,10 +50,12 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
             alert("Debe indicar las fechas de vigencia.");
             return;
         }
+
         if (new Date(startDate) > new Date(expiryDate)) {
             alert("La fecha de inicio no puede ser posterior a la fecha de término.");
             return;
         }
+
         onUpload(file, startDate, expiryDate);
         onClose();
     };
@@ -59,6 +63,18 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
+            
+            // Simular detección de fechas con IA
+            setIsDetecting(true);
+            setTimeout(() => {
+                const today = new Date();
+                const future = new Date();
+                future.setDate(today.getDate() + 30);
+                
+                setStartDate(today.toISOString().split('T')[0]);
+                setExpiryDate(future.toISOString().split('T')[0]);
+                setIsDetecting(false);
+            }, 1500);
         }
     };
 
@@ -114,7 +130,15 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
                     </div>
 
                     {/* Date Inputs */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 relative">
+                        {isDetecting && (
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-md border border-blue-100">
+                                <div className="flex flex-col items-center text-blue-600">
+                                    <RefreshCw className="animate-spin mb-1" size={20} />
+                                    <span className="text-xs font-medium">Detectando fechas con IA...</span>
+                                </div>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Inicio Vigencia</label>
                             <input 

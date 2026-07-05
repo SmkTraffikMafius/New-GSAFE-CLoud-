@@ -15,6 +15,35 @@ export const MandanteControlCenter: React.FC<Props> = ({ companies, onBack }) =>
     const [isSendingReport, setIsSendingReport] = useState(false);
     const [lastReportDate, setLastReportDate] = useState<string | null>(null);
 
+    const expiringDocs = useMemo(() => {
+        let count = 0;
+        let details: string[] = [];
+        const checkDoc = (doc: DocumentSubmission, contextName: string) => {
+            if (doc.status === DocStatus.APPROVED && doc.expiryDate) {
+                const expiry = new Date(doc.expiryDate);
+                expiry.setMinutes(expiry.getMinutes() + expiry.getTimezoneOffset());
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const timeDiff = expiry.getTime() - today.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                if (daysDiff > 0 && daysDiff <= 30) {
+                    count++;
+                    if (details.length < 5) {
+                        details.push(`${doc.fileName || 'Documento'} (${contextName}) - Vence en ${daysDiff} días`);
+                    }
+                }
+            }
+        };
+
+        companies.forEach(company => {
+            company.documents.forEach(d => checkDoc(d, `Empresa: ${company.name}`));
+            company.workers.forEach(w => w.documents.forEach(d => checkDoc(d, `${company.name} - Trabajador: ${w.firstName} ${w.lastName}`)));
+            company.vehicles.forEach(v => v.documents.forEach(d => checkDoc(d, `${company.name} - Vehículo: ${v.plate}`)));
+        });
+
+        return { count, details };
+    }, [companies]);
+
     // --- LÓGICA DE CÁLCULO DE KPIs Y MÓDULOS ---
     const stats = useMemo(() => {
         let totalWorkers = 0;
@@ -155,6 +184,31 @@ export const MandanteControlCenter: React.FC<Props> = ({ companies, onBack }) =>
                     </button>
                 </div>
             </div>
+
+            {expiringDocs.count > 0 && (
+                <div className="mb-8 bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-500 p-4 rounded-r-lg shadow-sm">
+                    <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                                Acción Requerida: {expiringDocs.count} {expiringDocs.count === 1 ? 'documento está' : 'documentos están'} por vencer en los próximos 30 días en toda la red
+                            </h3>
+                            <div className="mt-2 text-sm text-orange-700 dark:text-orange-200">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {expiringDocs.details.map((detail, idx) => (
+                                        <li key={idx}>{detail}</li>
+                                    ))}
+                                    {expiringDocs.count > 5 && (
+                                        <li>...y {expiringDocs.count - 5} más</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* HIGH LEVEL KPIS */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

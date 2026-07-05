@@ -34,6 +34,33 @@ export const AdminDashboard: React.FC<Props> = ({ company, onStatusChange, onAut
         }
     }, [activeTab]);
 
+    const expiringDocs = useMemo(() => {
+        let count = 0;
+        let details: string[] = [];
+        const checkDoc = (doc: DocumentSubmission, contextName: string) => {
+            if (doc.status === DocStatus.APPROVED && doc.expiryDate) {
+                const expiry = new Date(doc.expiryDate);
+                expiry.setMinutes(expiry.getMinutes() + expiry.getTimezoneOffset());
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const timeDiff = expiry.getTime() - today.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                if (daysDiff > 0 && daysDiff <= 30) {
+                    count++;
+                    if (details.length < 5) {
+                        details.push(`${doc.fileName || 'Documento'} (${contextName}) - Vence en ${daysDiff} días`);
+                    }
+                }
+            }
+        };
+
+        company.documents.forEach(d => checkDoc(d, 'Empresa'));
+        company.workers.forEach(w => w.documents.forEach(d => checkDoc(d, `Trabajador: ${w.firstName} ${w.lastName}`)));
+        company.vehicles.forEach(v => v.documents.forEach(d => checkDoc(d, `Vehículo: ${v.plate}`)));
+
+        return { count, details };
+    }, [company]);
+
     const currentProject = company.projects.find(p => p.id === selectedProjectId);
 
     // Categorización de Requirements
@@ -182,6 +209,31 @@ export const AdminDashboard: React.FC<Props> = ({ company, onStatusChange, onAut
                 </div>
             </div>
 
+            {expiringDocs.count > 0 && (
+                <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-500 p-4 rounded-r-lg shadow-sm">
+                    <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                                Acción Requerida: {expiringDocs.count} {expiringDocs.count === 1 ? 'documento está' : 'documentos están'} por vencer en los próximos 30 días
+                            </h3>
+                            <div className="mt-2 text-sm text-orange-700 dark:text-orange-200">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    {expiringDocs.details.map((detail, idx) => (
+                                        <li key={idx}>{detail}</li>
+                                    ))}
+                                    {expiringDocs.count > 5 && (
+                                        <li>...y {expiringDocs.count - 5} más</li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* KPI Cards (Documental) */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
@@ -329,7 +381,7 @@ export const AdminDashboard: React.FC<Props> = ({ company, onStatusChange, onAut
                                                 <div><h5 className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-2 uppercase"><Scale size={14}/> Legal y Contractual</h5><DocumentList requirements={workerReqsLegal} documents={getProjectDocs(worker.documents)} entityId={worker.id} readOnly={true} onUpload={() => {}} onStatusChange={onStatusChange}/></div>
                                                 
                                                 {(workerReqsHealth.length > 0 || workerReqsTraining.length > 0) && (
-                                                    <div className="grid md:grid-cols-2 gap-4">
+                                                    <div className="flex flex-col gap-4">
                                                         {workerReqsHealth.length > 0 && (
                                                             <div><h5 className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-2 uppercase"><HeartPulse size={14}/> Salud</h5><DocumentList requirements={workerReqsHealth} documents={getProjectDocs(worker.documents)} entityId={worker.id} readOnly={true} onUpload={() => {}} onStatusChange={onStatusChange}/></div>
                                                         )}
@@ -446,8 +498,8 @@ export const AdminDashboard: React.FC<Props> = ({ company, onStatusChange, onAut
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {auditLogs.map(log => (
-                                                <tr key={log.id}>
+                                            {auditLogs.map((log, index) => (
+                                                <tr key={`${log.id}-${index}`}>
                                                     <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap text-xs font-bold text-gray-700">{log.action}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-600">{log.userName}</td>

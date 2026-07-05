@@ -5,12 +5,10 @@ import { X, Save, FileText, CheckCircle2, XCircle, AlertCircle, Calendar, Bot, E
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { api } from '../services/api';
 
-// Configurar el worker de PDF.js localmente usando Vite
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Configurar el worker de PDF.js usando CDN para evitar problemas de build en producción
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface Props {
     isOpen: boolean;
@@ -28,6 +26,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
     const [startDate, setStartDate] = useState('');
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pageNumber, setPageNumber] = useState(1);
+    const [resolvedFileUrl, setResolvedFileUrl] = useState('');
 
     useEffect(() => {
         if (doc) {
@@ -36,6 +35,21 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
             setExpiryDate(doc.expiryDate || '');
             setStartDate(doc.startDate || '');
             setPageNumber(1); // Reset page number on new doc
+            
+            const fetchFile = async () => {
+                try {
+                    const stored = await api.db.getFile(doc.id);
+                    if (stored) {
+                        setResolvedFileUrl(stored);
+                    } else {
+                        setResolvedFileUrl(doc.fileUrl || '');
+                    }
+                } catch (err) {
+                    console.error("Failed to load file from IndexedDB", err);
+                    setResolvedFileUrl(doc.fileUrl || '');
+                }
+            };
+            fetchFile();
         }
     }, [doc, isOpen]);
 
@@ -62,7 +76,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
 
     const isImage = doc.fileName.match(/\.(jpeg|jpg|png)$/i);
     const isPdf = doc.fileName.match(/\.pdf$/i);
-    const hasPreview = doc.fileUrl && doc.fileUrl !== '#';
+    const hasPreview = resolvedFileUrl && resolvedFileUrl !== '#';
 
     // Helper to visualize AI Verdict
     const renderAiVerdictBadge = (verdict?: AiVerdict) => {
@@ -112,7 +126,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                         {hasPreview && (
                             <div className="absolute top-4 right-4 z-10">
                                 <a 
-                                    href={doc.fileUrl} 
+                                    href={resolvedFileUrl} 
                                     download={doc.fileName}
                                     className="bg-white/90 hover:bg-white backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold shadow-sm border border-gray-200 flex items-center gap-2 text-blue-600 transition-colors"
                                 >
@@ -124,11 +138,11 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                         <div className="flex-1 bg-white border border-gray-300 rounded-lg shadow-inner flex items-center justify-center overflow-auto mt-8">
                             {hasPreview ? (
                                 isImage ? (
-                                    <img src={doc.fileUrl} alt="Preview" className="max-w-full max-h-full object-contain p-4" />
+                                    <img src={resolvedFileUrl} alt="Preview" className="max-w-full max-h-full object-contain p-4" />
                                 ) : isPdf ? (
                                     <div className="w-full h-full overflow-auto bg-gray-200 flex flex-col items-center py-4 relative group">
                                         <Document
-                                            file={doc.fileUrl}
+                                            file={resolvedFileUrl}
                                             onLoadSuccess={onDocumentLoadSuccess}
                                             loading={
                                                 <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 rounded-lg">
@@ -141,7 +155,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                                                     <AlertCircle size={48} className="text-red-400 mb-4" />
                                                     <p className="text-gray-600 mb-4">Error al cargar el PDF.</p>
                                                     <a 
-                                                        href={doc.fileUrl} 
+                                                        href={resolvedFileUrl} 
                                                         download={doc.fileName}
                                                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
                                                     >
@@ -186,7 +200,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                                         <FileText size={48} className="text-gray-400 mb-4" />
                                         <p className="text-gray-600 mb-4">El formato del archivo no permite previsualización.</p>
                                         <a 
-                                            href={doc.fileUrl} 
+                                            href={resolvedFileUrl} 
                                             download={doc.fileName}
                                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
                                         >
@@ -239,6 +253,7 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                                             ${doc.verificationSource === 'SRCEI' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
                                               doc.verificationSource === 'DT_GOB' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                               doc.verificationSource === 'PREVIRED' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                              doc.verificationSource === 'ACHS' ? 'bg-teal-50 text-teal-700 border-teal-200' :
                                               doc.verificationSource === 'AI_ONLY' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                               'bg-slate-100 text-slate-700 border-slate-200'}
                                         `}>
@@ -259,6 +274,9 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                                         )}
                                         {doc.verificationSource === 'PREVIRED' && (
                                             <p><strong>Previred:</strong> Análisis IA complementado con verificación en el validador público de <a href="https://www.previred.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Previred</a>. Se introdujo el Código de Validación de Cupones/Firmas Digitales (código de barras o número de serie) para confirmar que la planilla de pago de cotizaciones fue procesada efectivamente y no corresponde a un borrador o documento adulterado.</p>
+                                        )}
+                                        {doc.verificationSource === 'ACHS' && (
+                                            <p><strong>Asociación Chilena de Seguridad (ACHS):</strong> Análisis IA complementado con verificación mediante código de verificación en el validador oficial de <a href="https://www.achs.cl/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ACHS</a>. Se validó que el certificado (Adhesión, Cotizaciones, Siniestralidad) corresponde efectivamente a la empresa consultada, validando su estado de vigencia y que no presente adulteraciones.</p>
                                         )}
                                         {doc.verificationSource === 'MANUAL' && (
                                             <p><strong>Validación Manual:</strong> Este documento debe ser auditado de forma manual por un administrador del sistema. No se aplicó validación automatizada de terceros.</p>

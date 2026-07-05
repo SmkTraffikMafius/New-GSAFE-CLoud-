@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Company, DocStatus, DocumentSubmission, EntityType, RequirementDef, ReqCategory, MonthlySafetyStats, CriticalWork, CRITICAL_WORKS_LABELS, Worker } from '../types';
 import { DocumentList } from './DocumentList';
 import { REQUIREMENTS } from '../mockData';
-import { Users, Building2, Truck, AlertTriangle, GraduationCap, HeartPulse, Scale, Plus, X, Save, FolderOpen, CheckCircle, Clock, AlertOctagon, ArrowUpRight, FileText, Activity, LayoutDashboard, ChevronRight, Calendar as CalendarIcon, Upload as UploadIcon, QrCode, Download, FileDown, ClipboardCheck, ShieldAlert, UserCog } from 'lucide-react';
+import { Users, Building2, Truck, AlertTriangle, GraduationCap, HeartPulse, Scale, Plus, X, Save, FolderOpen, CheckCircle, Clock, AlertOctagon, ArrowUpRight, FileText, Activity, LayoutDashboard, ChevronRight, Calendar as CalendarIcon, Upload as UploadIcon, QrCode, Download, FileDown, ClipboardCheck, ShieldAlert, UserCog, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { SafetyStatsModule } from './SafetyStatsModule';
 import { ComplianceCalendar } from './ComplianceCalendar';
@@ -14,6 +14,8 @@ interface Props {
     onUpload: (reqId: string, entityId: string, file: File, projectId: string, startDate: string, expiryDate: string) => void;
     onAddWorker: (worker: {firstName: string, lastName: string, rut: string, role: string}) => void;
     onAddVehicle: (vehicle: {plate: string, model: string, type: string}) => void;
+    onDeleteWorker?: (workerId: string) => void;
+    onDeleteVehicle?: (vehicleId: string) => void;
     onRefresh?: () => void;
 }
 
@@ -30,7 +32,7 @@ const WORKER_ROLES = [
     "Prevencionista"
 ];
 
-export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWorker, onAddVehicle, onRefresh }) => {
+export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWorker, onAddVehicle, onDeleteWorker, onDeleteVehicle, onRefresh }) => {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'company' | 'ehs' | 'workers' | 'vehicles' | 'calendar'>('dashboard');
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [showWorkerForm, setShowWorkerForm] = useState(false);
@@ -203,7 +205,64 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
     };
 
     const handleDownloadTemplate = (type: 'WORKER' | 'VEHICLE') => {
-        const headers = type === 'WORKER' ? 'Nombre,Apellido,RUT,Cargo' : 'Patente,Modelo,Tipo';
+        if (type === 'WORKER') {
+            const allReqsSet = new Map<string, RequirementDef>();
+            company.workers.forEach(w => {
+                getWorkerRequirements(w).forEach(r => {
+                    if (!allReqsSet.has(r.id)) {
+                        allReqsSet.set(r.id, r);
+                    }
+                });
+            });
+            const allReqs = Array.from(allReqsSet.values());
+
+            let csvContent = "\uFEFF"; 
+            const headers = ['Nombre', 'Apellido', 'RUT', 'Cargo', ...allReqs.map(r => `"${r.name.replace(/"/g, '""')}"`)].join(',');
+            csvContent += headers + "\n";
+
+            company.workers.forEach(w => {
+                const row = [
+                    `"${w.firstName.replace(/"/g, '""')}"`,
+                    `"${w.lastName.replace(/"/g, '""')}"`,
+                    `"${w.rut.replace(/"/g, '""')}"`,
+                    `"${w.role.replace(/"/g, '""')}"`
+                ];
+
+                const workerReqs = getWorkerRequirements(w);
+                allReqs.forEach(req => {
+                    if (workerReqs.some(r => r.id === req.id)) {
+                        const doc = w.documents.find(d => d.requirementId === req.id && d.projectId === selectedProjectId);
+                        if (doc) {
+                            const statusMap: Record<string, string> = {
+                                'APPROVED': 'Aprobado',
+                                'PENDING': 'Pendiente',
+                                'REJECTED': 'Rechazado',
+                                'IN_REVIEW': 'En Revisión',
+                                'EXPIRED': 'Vencido'
+                            };
+                            row.push(`"${statusMap[doc.status] || doc.status}"`);
+                        } else {
+                            row.push(`"Pendiente"`);
+                        }
+                    } else {
+                        row.push(`"N/A"`);
+                    }
+                });
+                csvContent += row.join(',') + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `informacion_trabajadores_${company.name}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            return;
+        }
+
+        const headers = 'Patente,Modelo,Tipo';
         const csvContent = "data:text/csv;charset=utf-8," + headers + "\nEjemplo,Usuario,12345678-9,Soldador";
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -232,6 +291,31 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
         return docs;
     }, [company]);
 
+    const expiringDocs = useMemo(() => {
+        let count = 0;
+        let details: string[] = [];
+        const checkDoc = (doc: DocumentSubmission, contextName: string) => {
+            if (doc.status === DocStatus.APPROVED && doc.expiryDate) {
+                const expiry = new Date(doc.expiryDate);
+                expiry.setMinutes(expiry.getMinutes() + expiry.getTimezoneOffset());
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const timeDiff = expiry.getTime() - today.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                if (daysDiff > 0 && daysDiff <= 30) {
+                    count++;
+                    details.push(`${doc.fileName || 'Documento'} (${contextName}) - Vence en ${daysDiff} días`);
+                }
+            }
+        };
+
+        company.documents.forEach(d => checkDoc(d, 'Empresa'));
+        company.workers.forEach(w => w.documents.forEach(d => checkDoc(d, `Trabajador: ${w.firstName} ${w.lastName}`)));
+        company.vehicles.forEach(v => v.documents.forEach(d => checkDoc(d, `Vehículo: ${v.plate}`)));
+
+        return { count, details };
+    }, [company]);
+
     if (!currentProject) return <div className="p-8 text-center text-gray-500">Cargando datos...</div>;
 
     const SidebarItem = ({ id, label, icon: Icon, count }: { id: typeof activeTab, label: string, icon: any, count?: number }) => (
@@ -256,6 +340,7 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
             )}
         </button>
     );
+
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -292,6 +377,30 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-6">
+                    {expiringDocs.count > 0 && (
+                        <div className="bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-500 p-4 rounded-r-lg shadow-sm">
+                            <div className="flex items-start">
+                                <div className="flex-shrink-0">
+                                    <Clock className="h-5 w-5 text-orange-500" />
+                                </div>
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                                        Acción Requerida: {expiringDocs.count} {expiringDocs.count === 1 ? 'documento está' : 'documentos están'} por vencer en los próximos 30 días
+                                    </h3>
+                                    <div className="mt-2 text-sm text-orange-700 dark:text-orange-200">
+                                        <ul className="list-disc pl-5 space-y-1">
+                                            {expiringDocs.details.slice(0, 3).map((detail, idx) => (
+                                                <li key={idx}>{detail}</li>
+                                            ))}
+                                            {expiringDocs.details.length > 3 && (
+                                                <li>...y {expiringDocs.details.length - 3} más</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     
                     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
@@ -496,7 +605,7 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                                             <input type="file" ref={workerCsvRef} onChange={(e) => handleCSVImport(e, 'WORKER')} accept=".csv" className="hidden"/>
                                         </label>
                                         <button onClick={() => handleDownloadTemplate('WORKER')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
-                                            <Download size={16} /> Plantilla
+                                            <Download size={16} /> Descargar Reporte (CSV)
                                         </button>
                                         <button onClick={() => setShowWorkerForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
                                             <Plus size={16} /> Agregar Trabajador
@@ -558,9 +667,16 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <button onClick={() => setShowQRModal(worker.id)} className="p-2 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors" title="Ver Pase QR">
-                                                        <QrCode size={20} />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button onClick={() => setShowQRModal(worker.id)} className="p-2 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors" title="Ver Pase QR">
+                                                            <QrCode size={20} />
+                                                        </button>
+                                                        {onDeleteWorker && (
+                                                            <button onClick={() => onDeleteWorker(worker.id)} className="p-2 hover:bg-red-50 rounded text-slate-500 hover:text-red-600 transition-colors" title="Eliminar Trabajador">
+                                                                <Trash2 size={20} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="p-6 space-y-6">
                                                     {workerReqsCritical.length > 0 && (
@@ -634,7 +750,14 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                                                     <h3 className="text-lg font-bold text-gray-900">{vehicle.plate}</h3>
                                                     <p className="text-sm text-gray-500">{vehicle.model} - {vehicle.type}</p>
                                                 </div>
-                                                <div className="bg-gray-100 p-2 rounded-full text-gray-500"><Truck size={20}/></div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="bg-gray-100 p-2 rounded-full text-gray-500"><Truck size={20}/></div>
+                                                    {onDeleteVehicle && (
+                                                        <button onClick={() => onDeleteVehicle(vehicle.id)} className="p-2 hover:bg-red-50 rounded-full text-slate-500 hover:text-red-600 transition-colors" title="Eliminar Vehículo">
+                                                            <Trash2 size={20} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <DocumentList requirements={vehicleReqs} documents={getProjectDocs(vehicle.documents)} entityId={vehicle.id} onUpload={handleUploadWrapper}/>
                                         </div>

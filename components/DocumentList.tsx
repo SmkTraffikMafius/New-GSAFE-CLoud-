@@ -95,10 +95,10 @@ export const DocumentList: React.FC<Props> = ({ requirements, documents, entityI
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento Requerido</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Base Legal / Descripción</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[35%] min-w-[200px]">Documento Requerido</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[40%] min-w-[250px]">Base Legal / Descripción</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%] min-w-[100px]">Estado</th>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%] min-w-[120px]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -109,16 +109,20 @@ export const DocumentList: React.FC<Props> = ({ requirements, documents, entityI
 
                                 return (
                                     <tr key={req.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4">
                                             <div className="flex items-center">
-                                                <div className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg ${doc ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <FileText size={20} />
+                                                <div className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg overflow-hidden ${doc ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                    {doc && doc.fileUrl && doc.fileUrl.startsWith('data:image/') ? (
+                                                        <img src={doc.fileUrl} alt="thumbnail" className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <FileText size={20} />
+                                                    )}
                                                 </div>
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-gray-900">{req.name}</div>
                                                     {doc ? (
                                                         <div className="flex flex-col gap-1 mt-1">
-                                                            <div className="text-xs text-gray-500 truncate max-w-[150px]" title={doc.fileName}>
+                                                            <div className="text-xs text-gray-500 truncate max-w-[200px]" title={doc.fileName}>
                                                                 {doc.fileName}
                                                             </div>
                                                             <div className="flex flex-col gap-0.5">
