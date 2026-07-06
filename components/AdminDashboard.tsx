@@ -313,28 +313,28 @@ export const AdminDashboard: React.FC<Props> = ({ company, onStatusChange, onAut
                 </div>
                 
                 {/* Panel de Auditoría Completa (Tabs) */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
-                     <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-bold text-gray-900">Panel de Auditoría de Documentos</h3>
-                        <p className="text-sm text-gray-500">Filtrado por Contrato: <strong>{currentProject.name}</strong></p>
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm lg:col-span-2 overflow-hidden flex flex-col">
+                     <div className="bg-gray-50 dark:bg-slate-900/50 px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Panel de Auditoría de Documentos</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Filtrado por Contrato: <strong className="text-gray-800 dark:text-gray-200">{currentProject.name}</strong></p>
                      </div>
 
                     {/* Tabs Navigation */}
-                    <div className="border-b border-gray-200 px-6">
-                        <nav className="-mb-px flex space-x-8">
-                            <button onClick={() => setActiveTab('company')} className={`${activeTab === 'company' ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}><Building2 size={18} />Empresa</button>
-                            <button onClick={() => setActiveTab('workers')} className={`${activeTab === 'workers' ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}><Users size={18} />Trabajadores</button>
-                            <button onClick={() => setActiveTab('vehicles')} className={`${activeTab === 'vehicles' ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}><Truck size={18} />Vehículos</button>
-                            <button onClick={() => setActiveTab('hse')} className={`${activeTab === 'hse' ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 text-green-700`}><Activity size={18} />Gestión HSE</button>
-                            <button onClick={() => setActiveTab('audit')} className={`${activeTab === 'audit' ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}><List size={18} />Logs Auditoría</button>
-                        </nav>
+                    <div className="border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+                        <div className="flex flex-wrap bg-gray-100 dark:bg-slate-700/50 p-1 rounded-xl w-full shadow-inner border border-gray-200 dark:border-slate-600 gap-1">
+                            <button onClick={() => setActiveTab('company')} className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'company' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}><Building2 size={16} />Empresa</button>
+                            <button onClick={() => setActiveTab('workers')} className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'workers' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}><Users size={16} />Trabajadores</button>
+                            <button onClick={() => setActiveTab('vehicles')} className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'vehicles' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}><Truck size={16} />Vehículos</button>
+                            <button onClick={() => setActiveTab('hse')} className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'hse' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}><Activity size={16} />Gestión HSE</button>
+                            <button onClick={() => setActiveTab('audit')} className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'audit' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}><List size={16} />Logs</button>
+                        </div>
                     </div>
 
                     {/* Content Area */}
-                    <div className="p-6 overflow-y-auto max-h-[600px] bg-slate-50">
+                    <div className="p-6 overflow-y-auto max-h-[600px] bg-slate-50 dark:bg-slate-900/30">
                          {activeTab === 'company' && (
-                            <section className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                <h4 className="text-md font-bold text-gray-800 mb-4">Documentación Corporativa</h4>
+                            <section className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-slate-700">
+                                <h4 className="text-md font-bold text-gray-800 dark:text-gray-200 mb-4">Documentación Corporativa</h4>
                                 <DocumentList 
                                     requirements={companyReqs} 
                                     documents={getProjectDocs(company.documents)} 
