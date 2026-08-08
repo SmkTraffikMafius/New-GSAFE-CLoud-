@@ -102,10 +102,15 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                 {/* HEADER */}
                 <div className="bg-slate-900 px-6 py-4 flex justify-between items-center flex-shrink-0">
                     <div>
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            {readOnly ? <FileText className="text-blue-400" size={24}/> : <Edit3 className="text-yellow-400" size={24} />}
-                            {readOnly ? 'Visor de Documento' : 'Control y Edición Mandante'}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                {readOnly ? <FileText className="text-blue-400" size={24}/> : <Edit3 className="text-yellow-400" size={24} />}
+                                {readOnly ? 'Visor de Documento' : 'Control y Edición Mandante'}
+                            </h3>
+                            <span className="bg-purple-900/80 text-purple-200 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-700/50 flex items-center gap-1">
+                                <ShieldCheck size={12} /> Protegido Ley 21.719
+                            </span>
+                        </div>
                         <p className="text-slate-400 text-xs mt-0.5">
                             {readOnly ? 'Modo Solo Lectura - Auditoría' : 'Revisión y Corrección de Análisis IA'}: {doc.fileName}
                         </p>
@@ -115,6 +120,18 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                     </button>
                 </div>
 
+                {/* BLOQUEO TEMPORAL BANNER (Art. 8° ter Ley 21.719) */}
+                {doc.isTemporarilyBlocked && (
+                    <div className="bg-amber-600 text-white px-6 py-2 text-xs font-bold flex items-center justify-between shadow-md">
+                        <span className="flex items-center gap-2">
+                            <AlertCircle size={16} /> Visibilidad Suspendida por Solicitud de Bloqueo Temporal (Art. 8° ter Ley N° 21.719 de Protección de Datos Personales)
+                        </span>
+                        <span className="bg-amber-800 px-2 py-0.5 rounded text-[10px] font-mono">
+                            Efectivo: {doc.effectiveBlockDate || 'Inmediato'}
+                        </span>
+                    </div>
+                )}
+
                 {/* MAIN CONTENT (SPLIT SCREEN) */}
                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                     
@@ -123,11 +140,12 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                         <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-gray-200 flex items-center gap-2">
                             <Eye size={14} className="text-gray-500"/> Vista Previa
                         </div>
-                        {hasPreview && (
+                        {hasPreview && !doc.isTemporarilyBlocked && (
                             <div className="absolute top-4 right-4 z-10">
                                 <a 
                                     href={resolvedFileUrl} 
                                     download={doc.fileName}
+                                    onClick={() => api.audit.log('DOWNLOAD_SENSITIVE_DOC', 'user', 'Usuario', `Descarga de documento sensible Ley 21.719: ${doc.fileName}`)}
                                     className="bg-white/90 hover:bg-white backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold shadow-sm border border-gray-200 flex items-center gap-2 text-blue-600 transition-colors"
                                 >
                                     <Download size={14} /> Descargar
@@ -135,7 +153,16 @@ export const ReviewModal: React.FC<Props> = ({ isOpen, onClose, doc, reqName, on
                             </div>
                         )}
                         
-                        <div className="flex-1 bg-white border border-gray-300 rounded-lg shadow-inner flex items-center justify-center overflow-auto mt-8">
+                        <div className={`flex-1 bg-white border border-gray-300 rounded-lg shadow-inner flex items-center justify-center overflow-auto mt-8 relative ${doc.isTemporarilyBlocked ? 'blur-sm select-none pointer-events-none' : ''}`}>
+                            {doc.isTemporarilyBlocked && (
+                                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center text-white">
+                                    <ShieldCheck size={48} className="text-amber-400 mb-3 animate-pulse" />
+                                    <h4 className="font-bold text-base mb-1">Contenido Suspendido Temporalmente</h4>
+                                    <p className="text-xs text-slate-200 max-w-sm">
+                                        La visibilidad de este archivo ha sido bloqueada conforme a la solicitud del titular amparada en el Artículo 8° ter de la Ley 21.719.
+                                    </p>
+                                </div>
+                            )}
                             {hasPreview ? (
                                 isImage ? (
                                     <img src={resolvedFileUrl} alt="Preview" className="max-w-full max-h-full object-contain p-4" />

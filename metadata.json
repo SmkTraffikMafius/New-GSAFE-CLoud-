@@ -1,6 +1,8 @@
 {
-  "name": "nueva funcional f GSAFE Compliance Manager final 10 diciembre 2025",
-  "description": "Enterprise-grade Contractor Management System (CMS) designed for compliance control, document validation, and access authorization based on Chilean regulatory standards (Ley 20.123, 16.744) and high-security site requirements.",
+  "name": "Compliance Manager Platform",
+  "description": "Enterprise-grade Contractor Management System (CMS) designed for compliance control, document validation, and access authorization based on Chilean regulatory standards (Ley 20.123, 16.744, Ley 21.719 de Protección de Datos Personales) and high-security site requirements.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -768,5 +768,134 @@ export const api = {
             setDB('gsafe_notifications', updated);
             return updated;
         }
+    },
+
+    // LEY 21.719: SERVICIO DE PORTAL Y GESTIÓN DERECHOS ARCO+P
+    arco: {
+        listRequests: async (companyId?: string): Promise<ArcoRequest[]> => {
+            const list: ArcoRequest[] = getDB('gsafe_arco_requests') || [];
+            if (companyId && companyId !== 'GLOBAL') {
+                return list.filter(r => r.companyId === companyId || r.companyId === 'GLOBAL');
+            }
+            return list;
+        },
+        createRequest: async (req: Omit<ArcoRequest, 'id'>): Promise<ArcoRequest> => {
+            await delay(DELAY);
+            const list: ArcoRequest[] = getDB('gsafe_arco_requests') || [];
+            const newReq: ArcoRequest = {
+                ...req,
+                id: `ARCO-${Date.now().toString().slice(-6)}`
+            };
+            const updated = [newReq, ...list];
+            setDB('gsafe_arco_requests', updated);
+            api.audit.log('ARCO_REQUEST_CREATED', req.userId, req.userName, `Solicitud Derecho ${req.rightType} (Ley 21.719): ${req.details}`);
+            return newReq;
+        },
+        processRequest: async (requestId: string, status: 'APPROVED' | 'REJECTED' | 'IN_PROCESS', notes?: string) => {
+            await delay(DELAY);
+            const list: ArcoRequest[] = getDB('gsafe_arco_requests') || [];
+            const updated = list.map(r => {
+                if (r.id === requestId) {
+                    return {
+                        ...r,
+                        status,
+                        resolutionNotes: notes,
+                        resolutionDate: new Date().toISOString()
+                    };
+                }
+                return r;
+            });
+            setDB('gsafe_arco_requests', updated);
+            api.audit.log('ARCO_REQUEST_PROCESSED', 'admin_system', 'Sistema DPO', `Solicitud ${requestId} actualizada a ${status}`);
+            return updated;
+        },
+        anonymizeWorker: async (companyId: string, workerId: string) => {
+            await delay(DELAY);
+            const companies = getCompaniesDB();
+            let updatedAny = false;
+            const updatedCompanies = companies.map((comp: Company) => {
+                const containsWorker = comp.workers && comp.workers.some((w: Worker) => w.id === workerId);
+                if (comp.id === companyId || containsWorker) {
+                    return {
+                        ...comp,
+                        workers: (comp.workers || []).map((w: Worker) => {
+                            if (w.id === workerId) {
+                                updatedAny = true;
+                                return {
+                                    ...w,
+                                    firstName: 'ANÓNIMO',
+                                    lastName: 'SUPRIMIDO',
+                                    rut: 'XX.XXX.XXX-X',
+                                    qrCodeUrl: undefined,
+                                    isAnonymized: true,
+                                    anonymizedAt: new Date().toISOString()
+                                };
+                            }
+                            return w;
+                        })
+                    };
+                }
+                return comp;
+            });
+            setDB('gsafe_companies', updatedCompanies);
+            api.audit.log('ANONYMIZE_WORKER_PII', 'dpo_system', 'Sistema DPO Ley 21.719', `Anonimización ejecutada para el trabajador ID: ${workerId}`);
+            return updatedCompanies;
+        },
+        blockDocumentTemporarily: async (companyId: string, docId: string, effectiveBlockDate?: string) => {
+            await delay(DELAY);
+            const companies = getCompaniesDB();
+            const cIdx = companies.findIndex((c: Company) => c.id === companyId);
+            if (cIdx === -1) return;
+            const comp = { ...companies[cIdx] };
+
+            const updateBlock = (list: DocumentSubmission[]) => (list || []).map(d => {
+                if (d.id === docId) {
+                    return {
+                        ...d,
+                        isTemporarilyBlocked: true,
+                        blockedAt: new Date().toISOString(),
+                        effectiveBlockDate: effectiveBlockDate || new Date().toISOString(),
+                        history: [...(d.history || []), {
+                            date: new Date().toISOString(),
+                            action: 'BLOCK' as const,
+                            user: 'Sistema DPO (Ley 21.719)',
+                            comment: 'Bloqueo temporal de visibilidad por solicitud de titular (Art. 8° ter)'
+                        }]
+                    };
+                }
+                return d;
+            });
+
+            comp.documents = updateBlock(comp.documents || []);
+            comp.workers = (comp.workers || []).map((w: Worker) => ({ ...w, documents: updateBlock(w.documents || []) }));
+            comp.vehicles = (comp.vehicles || []).map((v: Vehicle) => ({ ...v, documents: updateBlock(v.documents || []) }));
+
+            companies[cIdx] = comp;
+            setDB('gsafe_companies', companies);
+            api.audit.log('BLOCK_DOC_TEMPORARILY', 'dpo_system', 'Sistema DPO Ley 21.719', `Bloqueo temporal activado para documento ID: ${docId} (Fecha Efectiva: ${effectiveBlockDate || 'Inmediata'})`);
+            return comp;
+        },
+        exportPortabilityPackage: async (companyId: string, userId: string) => {
+            const companies = getCompaniesDB();
+            const comp = companies.find((c: Company) => c.id === companyId);
+            const exportData = {
+                leyenda: 'Paquete Interoperable de Portabilidad de Datos Personales (Ley N° 21.719 de Chile - Art. 9°)',
+                fecha_exportacion: new Date().toISOString(),
+                usuario_solicitante: userId,
+                empresa: comp ? { id: comp.id, rut: comp.rut, name: comp.name } : 'No especificada',
+                nomina_trabajadores_anonimizable: comp?.workers || [],
+                documentos_asociados: comp?.documents || []
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Compliance_Portabilidad_Datos_Ley21719_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            api.audit.log('EXPORT_PORTABILITY_DATA', userId, 'Usuario Titular', `Exportación de datos personales efectuada (Art. 9° Ley 21.719)`);
+        }
     }
 };

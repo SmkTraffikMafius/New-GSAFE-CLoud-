@@ -19,7 +19,7 @@ export const REQUIREMENTS: RequirementDef[] = [
     { id: 'req_c_f30', name: 'Certificado F30 (Antecedentes)', entityType: EntityType.COMPANY, category: ReqCategory.LEGAL, description: 'Certificado de Antecedentes Laborales y Previsionales.' },
     { id: 'req_c_protocolos_minsal', name: 'Protocolos MINSAL', entityType: EntityType.COMPANY, category: ReqCategory.EHS, description: 'Documentación de implementación de protocolos (TMERT, MMC, PREXOR, etc.).' },
     { id: 'req_c_plan_prevencion', name: 'Plan Prevención Riesgos (DS 44)', entityType: EntityType.COMPANY, category: ReqCategory.EHS, description: 'Plan de seguridad alineado al Decreto Supremo 44.' },
-    { id: 'req_c_prog_cap', name: 'Programa de Capacitaciones Google', entityType: EntityType.COMPANY, category: ReqCategory.TRAINING, description: 'Plan anual de formación incluyendo exigencias mínimas de Google.' },
+    { id: 'req_c_prog_cap', name: 'Programa de Capacitaciones Corporativas', entityType: EntityType.COMPANY, category: ReqCategory.TRAINING, description: 'Plan anual de formación incluyendo exigencias mínimas del mandante.' },
     { id: 'req_c_matriz_legal', name: 'Matriz de Cumplimiento Legal', entityType: EntityType.COMPANY, category: ReqCategory.LEGAL, description: 'Listado de normativa aplicable y estado de cumplimiento.' },
     { id: 'req_c_matriz_epp', name: 'Matriz de EPP por Cargo', entityType: EntityType.COMPANY, category: ReqCategory.EHS, description: 'Definición de elementos de protección personal por perfil de riesgo.' },
     { id: 'req_c_miper', name: 'Matriz MIPER', entityType: EntityType.COMPANY, category: ReqCategory.EHS, description: 'Identificación de Peligros y Evaluación de Riesgos actualizada.' },
@@ -30,7 +30,7 @@ export const REQUIREMENTS: RequirementDef[] = [
     { id: 'req_w_id', name: 'Cédula de Identidad / Pasaporte', entityType: EntityType.WORKER, category: ReqCategory.LEGAL, description: 'Copia legible por ambos lados o documento de identidad internacional.' },
     { id: 'req_w_contrato', name: 'Contrato y Anexo DataLuna', entityType: EntityType.WORKER, category: ReqCategory.LEGAL, description: 'Contrato de trabajo con anexo específico de vinculación al proyecto DataLuna.' },
     { id: 'req_w_irl', name: 'Informativo de Riesgos (IRL)', entityType: EntityType.WORKER, category: ReqCategory.EHS, description: 'Derecho a saber / Obligación de informar específica de la empresa.' },
-    { id: 'req_w_induccion', name: 'Inducción Google', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Comprobante de aprobación de inducción corporativa Google.' },
+    { id: 'req_w_induccion', name: 'Inducción Corporativa', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Comprobante de aprobación de inducción corporativa.' },
     { id: 'req_w_entrega_epp', name: 'Registro Entrega de EPP', entityType: EntityType.WORKER, category: ReqCategory.EHS, description: 'Comprobante firmado de recepción de elementos de protección.' },
     { id: 'req_w_entrega_riohs', name: 'Registro Entrega RIOHS', entityType: EntityType.WORKER, category: ReqCategory.LEGAL, description: 'Comprobante de recepción del Reglamento Interno de la empresa.' },
     { id: 'req_w_difusion_miper', name: 'Registro Difusión MIPER', entityType: EntityType.WORKER, category: ReqCategory.EHS, description: 'Evidencia de conocimiento de la matriz de riesgos por parte del trabajador.' },
@@ -43,8 +43,8 @@ export const REQUIREMENTS: RequirementDef[] = [
     { id: 'req_w_cap_uso_epp', name: 'Formación Uso de EPP', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Capacitación en el uso correcto de elementos de protección.' },
     { id: 'req_w_cap_cuidado_epp', name: 'Uso y Cuidado de EPP', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Capacitación específica en mantenimiento y reposición de EPP.' },
     { id: 'req_w_cap_quimicos', name: 'Productos Químicos y Sust. Peligrosas', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Capacitación según alcance de trabajo con sustancias peligrosas.' },
-    { id: 'req_w_cap_google_relevant', name: 'Capacitación Procedimientos Google', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Formación en procedimientos relevantes según alcance del contrato.' },
-    { id: 'req_w_loto_google', name: 'Certificado LOTO Google (Aislación y Bloqueo)', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Certificado de capacitación en estándar de Aislación y Bloqueo de Energías Peligrosas de Google.', linkedCriticalWork: 'LOTO' },
+    { id: 'req_w_cap_corp_relevant', name: 'Capacitación Procedimientos Corporativos', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Formación en procedimientos relevantes según alcance del contrato.' },
+    { id: 'req_w_loto_std', name: 'Certificado LOTO (Aislación y Bloqueo)', entityType: EntityType.WORKER, category: ReqCategory.TRAINING, description: 'Certificado de capacitación en estándar de Aislación y Bloqueo de Energías Peligrosas.', linkedCriticalWork: 'LOTO' },
 
     // --- [MODULO VEHÍCULOS] ---
     { id: 'req_v_rt', name: 'Revisión Técnica', entityType: EntityType.VEHICLE, category: ReqCategory.TECHNICAL, description: 'Certificado vigente.', validationEndpoint: 'PRT_REV' },
@@ -126,9 +126,9 @@ export const MOCK_COMPANY: Company = {
 export const MOCK_USERS: User[] = [
     {
         id: 'u_admin',
-        email: 'admin@gsafe.cl',
+        email: 'admin@compliance.cl',
         password: 'admin',
-        name: 'Administrador GSAFE',
+        name: 'Administrador de Cumplimiento',
         role: 'ADMIN'
     },
     {

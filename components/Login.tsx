@@ -36,7 +36,7 @@ export const Login: React.FC<Props> = ({ onLogin, error }) => {
                                  <Construction size={36} />
                             </div>
                         </div>
-                        <h2 className="text-3xl font-bold text-white tracking-tight">GSAFE</h2>
+                        <h2 className="text-3xl font-bold text-white tracking-tight">Compliance Cloud</h2>
                         <p className="text-yellow-400 font-medium text-sm uppercase tracking-wider mt-1">Compliance Manager</p>
                         <p className="text-gray-400 mt-4 text-sm max-w-xs mx-auto">Plataforma integral para la gestión y validación documental de contratistas.</p>
                     </div>
@@ -100,7 +100,7 @@ export const Login: React.FC<Props> = ({ onLogin, error }) => {
                         <div className="grid grid-cols-2 gap-4 text-xs">
                             <div className="bg-slate-50 p-2 rounded border border-gray-200 text-center">
                                 <span className="block font-bold text-slate-700">Mandante</span>
-                                <span className="block text-gray-500">admin@gsafe.cl</span>
+                                <span className="block text-gray-500">admin@compliance.cl</span>
                                 <span className="block text-gray-500 font-mono mt-1">admin</span>
                             </div>
                             <div className="bg-slate-50 p-2 rounded border border-gray-200 text-center">
@@ -109,6 +109,9 @@ export const Login: React.FC<Props> = ({ onLogin, error }) => {
                                 <span className="block text-gray-500 font-mono mt-1">123</span>
                             </div>
                         </div>
+                        <p className="text-[11px] text-center text-gray-400 mt-4 flex items-center justify-center gap-1">
+                            <Lock size={12} /> Plataforma adaptada a la Ley N° 21.719 de Protección de Datos Personales
+                        </p>
                     </div>
                 </form>
             </div>

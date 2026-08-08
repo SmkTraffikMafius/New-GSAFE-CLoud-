@@ -10,7 +10,9 @@ import { CompanyManagement } from './components/CompanyManagement';
 import { NotificationCenter } from './components/NotificationCenter';
 import { MandanteControlCenter } from './components/MandanteControlCenter';
 import { Chatbot } from './components/Chatbot';
-import { Construction, UserCircle, LogOut, Loader2, MailCheck, Bot, Moon, Sun, Globe } from 'lucide-react';
+import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
+import { ArcoPortalModal } from './components/ArcoPortalModal';
+import { Construction, UserCircle, LogOut, Loader2, MailCheck, Bot, Moon, Sun, Globe, ShieldCheck, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
     // --- ESTADO GLOBAL ---
@@ -27,6 +29,10 @@ const App: React.FC = () => {
     const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
     const [emailError, setEmailError] = useState<string | null>(null);
     const [darkMode, setDarkMode] = useState(false); // DARK MODE STATE
+    
+    // --- LEY 21.719 MODALES ---
+    const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+    const [isArcoModalOpen, setIsArcoModalOpen] = useState(false);
 
     const toggleLanguage = () => {
         const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
@@ -54,7 +60,7 @@ const App: React.FC = () => {
     useEffect(() => {
         const init = async () => {
             setIsLoading(true);
-            const storedCreds = localStorage.getItem('gsafe_auth_creds');
+            const storedCreds = localStorage.getItem('compliance_auth_creds') || localStorage.getItem('gsafe_auth_creds');
             if (storedCreds) {
                 try {
                     const { email, password } = JSON.parse(storedCreds);
@@ -66,10 +72,12 @@ const App: React.FC = () => {
                         }
                         await refreshData();
                     } else {
+                        localStorage.removeItem('compliance_auth_creds');
                         localStorage.removeItem('gsafe_auth_creds');
                     }
                 } catch (e) {
                     console.error("Auto-login failed", e);
+                    localStorage.removeItem('compliance_auth_creds');
                     localStorage.removeItem('gsafe_auth_creds');
                 }
             }
@@ -131,7 +139,7 @@ const App: React.FC = () => {
             } else {
                 setCurrentUser(user);
                 setAuthError(undefined);
-                localStorage.setItem('gsafe_auth_creds', JSON.stringify({ email, password: pass }));
+                localStorage.setItem('compliance_auth_creds', JSON.stringify({ email, password: pass }));
                 if (user.role === 'ADMIN') {
                     setAdminView('LIST');
                     setSelectedCompanyId(null);
@@ -154,6 +162,7 @@ const App: React.FC = () => {
         setAdminView('LIST');
         setSelectedCompanyId(null);
         setAuthError(undefined);
+        localStorage.removeItem('compliance_auth_creds');
         localStorage.removeItem('gsafe_auth_creds');
     };
 
@@ -166,7 +175,7 @@ const App: React.FC = () => {
         setIsLoading(false);
         await sendNotificationEmail(
             newCompany.contactEmail,
-            `Bienvenido a GSAFE - Credenciales de Acceso`,
+            `Bienvenido a Compliance Cloud - Credenciales de Acceso`,
             `Estimado proveedor ${newCompany.name}, su cuenta ha sido creada.\nUsuario: ${newUser.email}\nClave: ${newUser.password}\n\nPor favor ingrese al portal para cargar su documentación.`
         );
     };
@@ -508,9 +517,19 @@ const App: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-xl cursor-pointer" onClick={() => currentUser.role === 'ADMIN' && setAdminView('LIST')}>
                         <Construction className="text-yellow-400" />
-                        GSAFE<span className="text-gray-400 font-light">Cloud</span>
+                        Compliance<span className="text-gray-400 font-light">Cloud</span>
                     </div>
                     <div className="flex items-center gap-4">
+                        {/* LEY 21.719 ARCO+P PORTAL BUTTON */}
+                        <button 
+                            onClick={() => setIsArcoModalOpen(true)} 
+                            className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                            title="Portal de Derechos ARCO+P Ley 21.719"
+                        >
+                            <ShieldCheck size={16} className="text-emerald-400" />
+                            <span className="hidden md:inline">Derechos ARCO+P (Ley 21.719)</span>
+                        </button>
+
                         {/* THEME TOGGLE */}
                         <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-slate-800 text-gray-400 hover:text-white transition-colors">
                             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -621,13 +640,44 @@ const App: React.FC = () => {
             </main>
             
             <footer className="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 mt-auto">
-                 <div className="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    &copy; {new Date().getFullYear()} GSAFE Cloud Platform.
+                 <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div>
+                        &copy; {new Date().getFullYear()} Compliance Cloud Platform. Todos los derechos reservados.
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setIsPrivacyModalOpen(true)}
+                            className="hover:text-blue-600 dark:hover:text-blue-400 underline transition-colors flex items-center gap-1"
+                        >
+                            <Lock size={12} /> Política de Tratamiento de Datos (Ley 21.719)
+                        </button>
+                        <span>|</span>
+                        <button 
+                            onClick={() => setIsArcoModalOpen(true)}
+                            className="hover:text-emerald-600 dark:hover:text-emerald-400 underline transition-colors flex items-center gap-1 font-semibold"
+                        >
+                            <ShieldCheck size={12} className="text-emerald-500" /> Portal Derechos ARCO+P
+                        </button>
+                    </div>
                 </div>
             </footer>
             
             {/* Chatbot Assistant */}
             <Chatbot />
+
+            {/* Modales Ley 21.719 */}
+            <PrivacyPolicyModal 
+                isOpen={isPrivacyModalOpen}
+                onClose={() => setIsPrivacyModalOpen(false)}
+            />
+
+            <ArcoPortalModal 
+                isOpen={isArcoModalOpen}
+                onClose={() => setIsArcoModalOpen(false)}
+                currentUser={currentUser}
+                companies={companies}
+                onRefresh={refreshData}
+            />
         </div>
     );
 };

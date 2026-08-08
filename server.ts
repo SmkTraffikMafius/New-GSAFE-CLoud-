@@ -37,7 +37,7 @@ async function startServer() {
       });
 
       await transporter.sendMail({
-        from: `"GSAFE Cloud" <${smtpFrom}>`,
+        from: `"Compliance Cloud" <${smtpFrom}>`,
         to,
         subject,
         text: body,

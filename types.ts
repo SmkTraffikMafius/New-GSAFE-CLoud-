@@ -112,10 +112,18 @@ export interface DocumentSubmission {
     aiVerdict?: AiVerdict; // NUEVO: Dictamen específico de la IA
     extractedMetadata?: Record<string, any>; // Ej: { folio: "12345", rut: "1-9" }
     
+    // LEY 21.719: Metadatos de Privacidad y Bloqueo Temporal
+    isTemporarilyBlocked?: boolean;
+    blockedAt?: string;
+    effectiveBlockDate?: string;
+    isAnonymized?: boolean;
+    consentGiven?: boolean;
+    consentTimestamp?: string;
+    
     // NUEVO: Historial de Versiones
     history?: {
         date: string;
-        action: 'UPLOAD' | 'APPROVE' | 'REJECT';
+        action: 'UPLOAD' | 'APPROVE' | 'REJECT' | 'BLOCK' | 'UNBLOCK' | 'ANONYMIZE';
         user: string;
         comment?: string;
     }[];
@@ -126,10 +134,12 @@ export interface Worker {
     companyId: string;
     firstName: string;
     lastName: string;
-    rut: string; // ID Nacional
+    rut: string; // ID Nacional (Dato PII)
     role: string; // Ej: "Soldador", "Eléctrico", "Conductor"
     documents: DocumentSubmission[]; // Relación 1:N
     qrCodeUrl?: string; // URL generada para pase
+    isAnonymized?: boolean; // Ley 21.719: Anonimización por Supresión (Art. 7°)
+    anonymizedAt?: string;
 }
 
 export interface Vehicle {
@@ -243,3 +253,25 @@ export interface CorporateRequirement {
     evidenceName?: string;
     updatedAt?: string;
 }
+
+// LEY 21.719 DE PROTECCIÓN DE DATOS PERSONALES - PORTAL ARCO+P
+export type ArcoRightType = 'ACCESO' | 'RECTIFICACION' | 'SUPRESION' | 'OPOSICION' | 'BLOQUEO_TEMPORAL' | 'PORTABILIDAD';
+
+export interface ArcoRequest {
+    id: string;
+    userId: string;
+    userName: string;
+    userRut?: string;
+    companyId: string;
+    companyName?: string;
+    rightType: ArcoRightType;
+    details: string;
+    targetEntityId?: string; // ID del trabajador o documento objetivo
+    targetEntityName?: string;
+    status: 'PENDING' | 'IN_PROCESS' | 'APPROVED' | 'REJECTED';
+    requestDate: string;
+    resolutionDate?: string;
+    resolutionNotes?: string;
+    effectiveBlockDate?: string; // Para Bloqueo Temporal a 2 días hábiles (Art. 8° ter)
+}
+

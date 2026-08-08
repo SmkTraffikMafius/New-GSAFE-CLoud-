@@ -55,8 +55,8 @@ export const CompanyManagement: React.FC<Props> = ({
         try {
             await api.email.send(
                 testEmail,
-                "GSAFE - Prueba de Conexión de Correo SMTP",
-                `¡Hola!\n\nEste es un correo de prueba enviado desde la plataforma de control de contratistas GSAFE Cloud (www.contractorehscontrol.com).\n\nSi estás recibiendo este mensaje, significa que el servidor emisor de correos y tus credenciales SMTP están correctamente configuradas y son completamente funcionales.\n\n¡Felicidades! Tu aplicación está lista para enviar credenciales reales a los nuevos contratistas registrados.\n\nFecha de envío: ${new Date().toLocaleString()}`
+                "Compliance Cloud - Prueba de Conexión de Correo SMTP",
+                `¡Hola!\n\nEste es un correo de prueba enviado desde la plataforma de control de contratistas Compliance Cloud (www.contractorehscontrol.com).\n\nSi estás recibiendo este mensaje, significa que el servidor emisor de correos y tus credenciales SMTP están correctamente configuradas y son completamente funcionales.\n\n¡Felicidades! Tu aplicación está lista para enviar credenciales reales a los nuevos contratistas registrados.\n\nFecha de envío: ${new Date().toLocaleString()}`
             );
             setTestStatus('success');
             setTestMessage("¡Correo de prueba enviado con éxito! Verifique la bandeja de entrada (y la carpeta de spam o correo no deseado).");
@@ -189,7 +189,7 @@ export const CompanyManagement: React.FC<Props> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `gsafe_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `compliance_backup_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -632,9 +632,9 @@ export const CompanyManagement: React.FC<Props> = ({
                                         <div className="p-3 bg-yellow-50/50 rounded-lg border border-yellow-100">
                                             <strong className="text-yellow-800">Opción B: Correo Gmail Personal</strong>
                                             <ol className="list-decimal pl-4 mt-1 space-y-1">
-                                                <li>Activa "Verificación en Dos Pasos" en tu cuenta de Google.</li>
+                                                <li>Activa "Verificación en Dos Pasos" en tu cuenta de correo.</li>
                                                 <li>Ingresa a "Seguridad" y genera una <strong>"Contraseña de aplicación"</strong>.</li>
-                                                <li>Usa <code className="font-bold">smtp.gmail.com</code>, puerto <code className="font-bold">587</code>, y como contraseña ingresa el token de 16 letras generado por Google (sin espacios).</li>
+                                                <li>Usa <code className="font-bold">smtp.gmail.com</code>, puerto <code className="font-bold">587</code>, y como contraseña ingresa el token de 16 letras generado por tu proveedor de correo (sin espacios).</li>
                                             </ol>
                                         </div>
                                     </div>

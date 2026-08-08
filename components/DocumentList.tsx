@@ -119,12 +119,24 @@ export const DocumentList: React.FC<Props> = ({ requirements, documents, entityI
                                                     )}
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">{req.name}</div>
+                                                    <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                                        {req.name}
+                                                        {(req.category === 'HEALTH' || req.name.toLowerCase().includes('examen') || req.name.toLowerCase().includes('contrato') || req.name.toLowerCase().includes('liquidacion') || req.name.toLowerCase().includes('cedula') || req.name.toLowerCase().includes('rut')) && (
+                                                            <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800" title="Dato Sensible / PII protegido por Ley 21.719">
+                                                                Dato Sensible Ley 21.719
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {doc ? (
                                                         <div className="flex flex-col gap-1 mt-1">
                                                             <div className="text-xs text-gray-500 truncate max-w-[200px]" title={doc.fileName}>
                                                                 {doc.fileName}
                                                             </div>
+                                                            {doc.isTemporarilyBlocked && (
+                                                                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-300 w-fit">
+                                                                    🔒 Visibilidad Suspendida (Art. 8° ter Ley 21.719)
+                                                                </span>
+                                                            )}
                                                             <div className="flex flex-col gap-0.5">
                                                                 {doc.startDate && (
                                                                      <div className="flex items-center gap-1 text-[10px] text-gray-500">

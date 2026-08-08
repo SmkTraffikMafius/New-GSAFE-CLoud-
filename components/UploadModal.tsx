@@ -15,6 +15,7 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
     const [file, setFile] = useState<File | null>(null);
     const [startDate, setStartDate] = useState(initialStartDate);
     const [expiryDate, setExpiryDate] = useState(initialExpiryDate);
+    const [privacyConsent, setPrivacyConsent] = useState(false);
     const [isDetecting, setIsDetecting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,6 +25,7 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
             setStartDate(initialStartDate);
             setExpiryDate(initialExpiryDate);
             setFile(null);
+            setPrivacyConsent(false);
             setIsDetecting(false);
         }
     }, [isOpen, initialStartDate, initialExpiryDate]);
@@ -33,14 +35,6 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validation: If editing, file is optional (but user might want to re-upload). 
-        // For simplicity, let's enforce re-uploading the file on "Edit" to ensure consistency, 
-        // OR simply require a file if it's a new upload.
-        // Given the prompt "edit the information they uploaded", often implies metadata.
-        // However, standard flow usually requires the file to be present. 
-        // Let's enforce file selection to keep the system stateless regarding "old" files in this modal context,
-        // unless we want to allow metadata-only updates which is complex with file objects.
-        // DECISION: Enforce file re-upload to ensure file matches dates.
         if (!file) {
             alert("Debe seleccionar el archivo (o volver a subirlo si está editando).");
             return;
@@ -53,6 +47,11 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
 
         if (new Date(startDate) > new Date(expiryDate)) {
             alert("La fecha de inicio no puede ser posterior a la fecha de término.");
+            return;
+        }
+
+        if (!privacyConsent) {
+            alert("Debe aceptar el consentimiento informado de tratamiento de datos personales (Ley 21.719).");
             return;
         }
 
@@ -158,6 +157,23 @@ export const UploadModal: React.FC<Props> = ({ isOpen, onClose, reqName, onUploa
                                 value={expiryDate}
                                 onChange={e => setExpiryDate(e.target.value)}
                             />
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+                        <div className="flex items-start gap-2.5">
+                            <input 
+                                type="checkbox" 
+                                id="privacyConsent"
+                                required
+                                checked={privacyConsent}
+                                onChange={e => setPrivacyConsent(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                            />
+                            <label htmlFor="privacyConsent" className="text-xs text-gray-700 leading-tight cursor-pointer">
+                                <strong className="text-gray-900 block mb-0.5">Consentimiento Informado Ley N° 21.719:</strong>
+                                Otorgo consentimiento explícito e informado para el tratamiento de datos personales y/o datos sensibles (salud y antecedentes laborales) contenidos en este documento, con la finalidad exclusiva de verificación de cumplimiento laboral y gestión de acceso a faena.
+                            </label>
                         </div>
                     </div>
 
