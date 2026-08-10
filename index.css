@@ -2,6 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --- BASE THEME VARIABLES --- */
+:root {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --accent-glow: rgba(37, 99, 235, 0.2);
+  --header-bg: #0f172a;
+}
+
+/* 1. CORPORATE THEME */
+.theme-corporate {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --accent-glow: rgba(37, 99, 235, 0.25);
+  --header-bg: #0f172a;
+}
+
+/* 2. INDUSTRIAL MINING & SAFETY THEME */
+.theme-industrial {
+  --primary-color: #d97706;
+  --primary-hover: #b45309;
+  --accent-glow: rgba(217, 119, 6, 0.25);
+  --header-bg: #1c1917;
+}
+
+.theme-industrial .bg-blue-600, 
+.theme-industrial .bg-blue-500 {
+  background-color: #d97706 !important;
+}
+
+.theme-industrial .text-blue-400,
+.theme-industrial .text-blue-500,
+.theme-industrial .text-blue-600 {
+  color: #f59e0b !important;
+}
+
+.theme-industrial .border-blue-500,
+.theme-industrial .border-blue-600 {
+  border-color: #f59e0b !important;
+}
+
+/* 3. NORDIC EMERALD EHS THEME */
+.theme-emerald {
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --accent-glow: rgba(5, 150, 105, 0.25);
+  --header-bg: #064e3b;
+}
+
+.theme-emerald .bg-blue-600, 
+.theme-emerald .bg-blue-500 {
+  background-color: #059669 !important;
+}
+
+.theme-emerald .text-blue-400,
+.theme-emerald .text-blue-500,
+.theme-emerald .text-blue-600 {
+  color: #10b981 !important;
+}
+
+.theme-emerald .border-blue-500,
+.theme-emerald .border-blue-600 {
+  border-color: #10b981 !important;
+}
+
+/* 4. CYBERTECH IA THEME */
+.theme-cybertech {
+  --primary-color: #7c3aed;
+  --primary-hover: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.25);
+  --header-bg: #030712;
+}
+
+.theme-cybertech .bg-blue-600, 
+.theme-cybertech .bg-blue-500 {
+  background-color: #7c3aed !important;
+}
+
+.theme-cybertech .text-blue-400,
+.theme-cybertech .text-blue-500,
+.theme-cybertech .text-blue-600 {
+  color: #c084fc !important;
+}
+
+.theme-cybertech .border-blue-500,
+.theme-cybertech .border-blue-600 {
+  border-color: #a855f7 !important;
+}
+
+/* 5. EXECUTIVE PLATINUM THEME */
+.theme-executive {
+  --primary-color: #0284c7;
+  --primary-hover: #0369a1;
+  --accent-glow: rgba(2, 132, 199, 0.25);
+  --header-bg: #0f172a;
+}
+
+.theme-executive .bg-blue-600, 
+.theme-executive .bg-blue-500 {
+  background-color: #0284c7 !important;
+}
+
+.theme-executive .text-blue-400,
+.theme-executive .text-blue-500,
+.theme-executive .text-blue-600 {
+  color: #38bdf8 !important;
+}
+
+.theme-executive .border-blue-500,
+.theme-executive .border-blue-600 {
+  border-color: #38bdf8 !important;
+}
+
+/* DARK MODE BASE RULES */
 .dark {
   color-scheme: dark;
 }

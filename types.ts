@@ -57,7 +57,21 @@ export enum VerificationSource {
     MANUAL = 'MANUAL'          // Auditor Humano
 }
 
-export type UserRole = 'ADMIN' | 'CONTRACTOR';
+export type UserRole = 'MASTER_ADMIN' | 'ADMIN' | 'CONTRACTOR';
+
+export type CompanyType = 'MANDANTE' | 'CONTRACTOR' | 'SUBCONTRACTOR';
+
+export type CradleToGraveStatus = 'ONBOARDING' | 'DOCS_ASSIGNED' | 'ACCREDITED' | 'ACTIVE_CONTRACT' | 'OFFBOARDING' | 'ARCHIVED';
+
+export interface AuthorizationKey {
+    id: string;
+    keyName: string;
+    secretKey: string;
+    scope: 'ALL_MODULES' | 'EHS_AUDIT_ONLY' | 'DT_VERIFICATION' | 'MASTER_STRUCTURE';
+    isActive: boolean;
+    createdAt: string;
+    lastUsedAt?: string;
+}
 
 export interface User {
     id: string;
@@ -205,9 +219,13 @@ export interface Company {
     documents: DocumentSubmission[]; // Relación 1:N (Docs a nivel empresa)
     workers: Worker[];
     vehicles: Vehicle[];
-    accessAuthorized: boolean; // El "Semáforo" final (Podría migrar a ser por proyecto, pero lo mantenemos global o calculado)
+    accessAuthorized: boolean; // El "Semáforo" final
     criticalWorks?: CriticalWork[]; // NUEVO: Lista de trabajos críticos asignados
     hasSubcontractors?: boolean; // NUEVO: Indica si tiene subcontratos para lógica EHS
+    parentCompanyId?: string; // ID de empresa contratista principal (si es subcontratista)
+    subcontractorIds?: string[]; // IDs de empresas subcontratistas a su cargo
+    companyType?: CompanyType; // MANDANTE, CONTRACTOR o SUBCONTRACTOR
+    cradleToGraveStatus?: CradleToGraveStatus; // Estado en la matriz de ciclo de vida
 }
 
 // Type para el Dashboard

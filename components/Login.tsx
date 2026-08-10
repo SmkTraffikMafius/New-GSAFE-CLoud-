@@ -3,10 +3,11 @@ import { Lock, Mail, Construction, ArrowRight } from 'lucide-react';
 
 interface Props {
     onLogin: (email: string, pass: string) => void;
+    onGoToLanding?: () => void;
     error?: string;
 }
 
-export const Login: React.FC<Props> = ({ onLogin, error }) => {
+export const Login: React.FC<Props> = ({ onLogin, onGoToLanding, error }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,22 +96,59 @@ export const Login: React.FC<Props> = ({ onLogin, error }) => {
                         {!isSubmitting && <ArrowRight size={16} />}
                     </button>
                     
+                    {onGoToLanding && (
+                        <div className="text-center pt-2">
+                            <button
+                                type="button"
+                                onClick={onGoToLanding}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-bold underline transition-colors"
+                            >
+                                &larr; Volver a la Página Web Comercial / Propuesta de Valor
+                            </button>
+                        </div>
+                    )}
+
                     <div className="mt-6 pt-6 border-t border-gray-100">
-                        <p className="text-xs text-center text-gray-500 mb-3 font-semibold uppercase">Credenciales de Acceso (Demo)</p>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                            <div className="bg-slate-50 p-2 rounded border border-gray-200 text-center">
-                                <span className="block font-bold text-slate-700">Mandante</span>
-                                <span className="block text-gray-500">admin@compliance.cl</span>
-                                <span className="block text-gray-500 font-mono mt-1">admin</span>
-                            </div>
-                            <div className="bg-slate-50 p-2 rounded border border-gray-200 text-center">
-                                <span className="block font-bold text-slate-700">Contratista</span>
-                                <span className="block text-gray-500">contacto@andes.cl</span>
-                                <span className="block text-gray-500 font-mono mt-1">123</span>
-                            </div>
+                        <p className="text-xs text-center text-gray-500 mb-3 font-semibold uppercase">Credenciales de Prueba por Rol Jerárquico</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <button 
+                                type="button"
+                                onClick={() => { setEmail('owner@compliance.cl'); setPassword('masterowner2026'); }}
+                                className="bg-amber-50 hover:bg-amber-100 p-2 rounded-lg border border-amber-300 text-center transition-all cursor-pointer"
+                            >
+                                <span className="block font-bold text-amber-900">Propietario Master</span>
+                                <span className="block text-amber-700 font-mono text-[10px]">owner@compliance.cl</span>
+                            </button>
+
+                            <button 
+                                type="button"
+                                onClick={() => { setEmail('admin@compliance.cl'); setPassword('admin'); }}
+                                className="bg-slate-50 hover:bg-slate-100 p-2 rounded-lg border border-slate-300 text-center transition-all cursor-pointer"
+                            >
+                                <span className="block font-bold text-slate-800">Admin Mandante</span>
+                                <span className="block text-slate-600 font-mono text-[10px]">admin@compliance.cl</span>
+                            </button>
+
+                            <button 
+                                type="button"
+                                onClick={() => { setEmail('contacto@andes.cl'); setPassword('123'); }}
+                                className="bg-blue-50 hover:bg-blue-100 p-2 rounded-lg border border-blue-300 text-center transition-all cursor-pointer"
+                            >
+                                <span className="block font-bold text-blue-900">Contratista Directo</span>
+                                <span className="block text-blue-700 font-mono text-[10px]">contacto@andes.cl</span>
+                            </button>
+
+                            <button 
+                                type="button"
+                                onClick={() => { setEmail('sub@electro.cl'); setPassword('123'); }}
+                                className="bg-emerald-50 hover:bg-emerald-100 p-2 rounded-lg border border-emerald-300 text-center transition-all cursor-pointer"
+                            >
+                                <span className="block font-bold text-emerald-900">Subcontratista EHS</span>
+                                <span className="block text-emerald-700 font-mono text-[10px]">sub@electro.cl</span>
+                            </button>
                         </div>
                         <p className="text-[11px] text-center text-gray-400 mt-4 flex items-center justify-center gap-1">
-                            <Lock size={12} /> Plataforma adaptada a la Ley N° 21.719 de Protección de Datos Personales
+                            <Lock size={12} /> Cifrado de Extremo a Extremo & Ley N° 21.719 de Protección de Datos
                         </p>
                     </div>
                 </form>

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useRef } from 'react';
 import { Company, User, Project, DocStatus, CriticalWork, CRITICAL_WORKS_LABELS } from '../types';
-import { Plus, Save, Building, Mail, Lock, CheckCircle, Copy, X, Edit2, Trash2, ArrowRight, FolderPlus, FileText, Users, Truck, AlertOctagon, TrendingUp, PieChart as PieIcon, LayoutDashboard, Download, Upload, Database, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Plus, Save, Building, Mail, Lock, CheckCircle, Copy, X, Edit2, Trash2, ArrowRight, FolderPlus, FileText, Users, Truck, AlertOctagon, TrendingUp, PieChart as PieIcon, LayoutDashboard, Download, Upload, Database, AlertTriangle, ShieldCheck, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { api } from '../services/api';
 
@@ -13,6 +13,8 @@ interface Props {
     onSelectCompany: (id: string) => void;
     onAddProject: (companyId: string, project: Project) => void;
     onGoToControlCenter?: () => void;
+    onGoToAudits?: () => void;
+    onGoToGlobalPerformance?: () => void;
 }
 
 export const CompanyManagement: React.FC<Props> = ({ 
@@ -22,7 +24,9 @@ export const CompanyManagement: React.FC<Props> = ({
     onDeleteCompany, 
     onSelectCompany,
     onAddProject,
-    onGoToControlCenter
+    onGoToControlCenter,
+    onGoToAudits,
+    onGoToGlobalPerformance
 }) => {
     // --- ESTADOS LOCALES ---
     const [showForm, setShowForm] = useState(false);
@@ -299,8 +303,18 @@ export const CompanyManagement: React.FC<Props> = ({
                         </div>
 
                          {onGoToControlCenter && (
-                            <button onClick={onGoToControlCenter} className="flex items-center gap-2 bg-white text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-50 shadow-sm transition-all font-bold">
+                            <button onClick={onGoToControlCenter} className="flex items-center gap-2 bg-white text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-50 shadow-sm transition-all font-bold cursor-pointer">
                                 <LayoutDashboard size={20} /> Dashboard Ejecutivo
+                            </button>
+                        )}
+                        {onGoToGlobalPerformance && (
+                            <button onClick={onGoToGlobalPerformance} className="flex items-center gap-2 bg-indigo-950/80 text-indigo-300 border border-indigo-800 px-4 py-2.5 rounded-lg hover:bg-indigo-900/60 shadow-sm transition-all font-bold cursor-pointer">
+                                <BarChart3 size={20} className="text-indigo-400" /> Desempeño Global (D3)
+                            </button>
+                        )}
+                        {onGoToAudits && (
+                            <button onClick={onGoToAudits} className="flex items-center gap-2 bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-4 py-2.5 rounded-lg hover:bg-emerald-900/60 shadow-sm transition-all font-bold cursor-pointer">
+                                <ShieldCheck size={20} className="text-emerald-400" /> Auditorías & Trazabilidad
                             </button>
                         )}
                         <button onClick={handleOpenCreate} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all transform hover:-translate-y-0.5 font-medium">

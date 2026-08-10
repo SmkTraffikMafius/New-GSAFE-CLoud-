@@ -70,7 +70,10 @@ export const MOCK_COMPANY: Company = {
     contactEmail: 'contacto@andes.cl',
     accessAuthorized: false,
     criticalWorks: ['LOTO', 'HEIGHT'], // Ejemplo: Esta empresa realiza LOTO y ALTURA
-    hasSubcontractors: false, // Default
+    hasSubcontractors: true,
+    companyType: 'CONTRACTOR',
+    cradleToGraveStatus: 'ACTIVE_CONTRACT',
+    subcontractorIds: ['comp_sub1'],
     projects: [
         { id: 'proj_1', name: 'Montaje Estructural Nave A', contractNumber: 'CTR-2023-088', isActive: true, safetyStats: [] },
         { id: 'proj_2', name: 'Mantenimiento Preventivo 2024', contractNumber: 'OS-2024-002', isActive: true, safetyStats: [] }
@@ -122,21 +125,73 @@ export const MOCK_COMPANY: Company = {
     ]
 };
 
+export const MOCK_SUBCONTRACTOR: Company = {
+    id: 'comp_sub1',
+    name: 'ElectroServicios SpA (Subcontratista Andes)',
+    rut: '77.888.999-3',
+    contactEmail: 'sub@electro.cl',
+    accessAuthorized: true,
+    parentCompanyId: 'comp_1',
+    companyType: 'SUBCONTRACTOR',
+    cradleToGraveStatus: 'ACCREDITED',
+    criticalWorks: ['LOTO'],
+    hasSubcontractors: false,
+    projects: [
+        { id: 'proj_1', name: 'Montaje Estructural Nave A', contractNumber: 'CTR-2023-088-SUB1', isActive: true, safetyStats: [] }
+    ],
+    documents: [
+        { 
+            id: 'd_sub1', requirementId: 'req_c_f30_1', entityId: 'comp_sub1', projectId: 'proj_1', fileName: 'f30_subcontratista.pdf', fileUrl: '#', uploadDate: '2023-10-05', status: DocStatus.APPROVED, expiryDate: '2023-11-05', verificationSource: VerificationSource.DT_GOB, reviewerComment: 'F30-1 verificado con éxito en Dirección del Trabajo.',
+            extractedMetadata: { folio_number: '987654321', rut_holder: '77.888.999-3', start_date: '2023-10-01', expiry_date: '2023-11-05' }
+        }
+    ],
+    workers: [
+        {
+            id: 'w_sub1',
+            companyId: 'comp_sub1',
+            firstName: 'Carlos',
+            lastName: 'Mendoza',
+            rut: '16.789.012-3',
+            role: 'Técnico Electricista Subcontratado',
+            documents: [
+                { id: 'd_wsub1', requirementId: 'req_w_contrato', entityId: 'w_sub1', projectId: 'proj_1', fileName: 'contrato_carlos.pdf', fileUrl: '#', uploadDate: '2023-06-01', status: DocStatus.APPROVED },
+                { id: 'd_wsub2', requirementId: 'req_w_examen', entityId: 'w_sub1', projectId: 'proj_1', fileName: 'examen_carlos.pdf', fileUrl: '#', uploadDate: '2023-06-01', status: DocStatus.APPROVED, expiryDate: '2024-06-01' }
+            ]
+        }
+    ],
+    vehicles: []
+};
+
 // Base de datos inicial de Usuarios
 export const MOCK_USERS: User[] = [
+    {
+        id: 'u_owner',
+        email: 'owner@compliance.cl',
+        password: 'masterowner2026',
+        name: 'Propietario / Master Administrator',
+        role: 'MASTER_ADMIN'
+    },
     {
         id: 'u_admin',
         email: 'admin@compliance.cl',
         password: 'admin',
-        name: 'Administrador de Cumplimiento',
+        name: 'Administrador EHS Mandante',
         role: 'ADMIN'
     },
     {
         id: 'u_comp1',
         email: 'contacto@andes.cl',
         password: '123',
-        name: 'Contacto Andes',
+        name: 'Contacto Andes (Contratista Principal)',
         role: 'CONTRACTOR',
         companyId: 'comp_1'
+    },
+    {
+        id: 'u_subcomp1',
+        email: 'sub@electro.cl',
+        password: '123',
+        name: 'Contacto ElectroServicios (Subcontratista)',
+        role: 'CONTRACTOR',
+        companyId: 'comp_sub1'
     }
 ];

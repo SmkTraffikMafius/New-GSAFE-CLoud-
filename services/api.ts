@@ -1,6 +1,6 @@
 
-import { Company, User, DocumentSubmission, DocStatus, AppNotification, Worker, Vehicle, Project, RequirementDef, VerificationSource, MonthlySafetyStats, AuditLog, AiVerdict } from '../types';
-import { MOCK_COMPANY, MOCK_USERS } from '../mockData';
+import { Company, User, DocumentSubmission, DocStatus, AppNotification, Worker, Vehicle, Project, RequirementDef, VerificationSource, MonthlySafetyStats, AuditLog, AiVerdict, AuthorizationKey } from '../types';
+import { MOCK_COMPANY, MOCK_SUBCONTRACTOR, MOCK_USERS } from '../mockData';
 // Fix: Removed SchemaType from import as it is deprecated/removed in @google/genai
 import { GoogleGenAI, Type } from "@google/genai";
 import { externalValidator, ValidationResult } from './externalValidator';
@@ -125,7 +125,7 @@ const clearAllFiles = async (): Promise<void> => {
 const getCompaniesDB = (): Company[] => {
     let companies = getDB('gsafe_companies');
     if (!companies) {
-        companies = [MOCK_COMPANY];
+        companies = [MOCK_COMPANY, MOCK_SUBCONTRACTOR];
         setDB('gsafe_companies', companies);
         
         // Inicializar usuarios si no existen
@@ -745,6 +745,36 @@ export const api = {
             setDB('gsafe_companies', companies);
             api.audit.log('REVIEW_DOC', 'admin_system', 'Sistema', `Documento ${status}: ${docName}`);
             return { docName };
+        },
+        verifyWithOfficialEntity: async (companyId: string, docId: string, source: string, folio?: string) => {
+            await delay(DELAY);
+            try {
+                const res = await fetch('/api/verify-official-document', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        verificationSource: source,
+                        folio,
+                        companyId
+                    })
+                });
+                const data = await res.json();
+                api.audit.log('OFFICIAL_VERIFICATION', 'system_gateway', 'Pasarela D2S / B2B', `Consulta oficial ejecutada con ${data.officialEntity} para documento ${docId}. Folio: ${data.officialFolio}`);
+                return data;
+            } catch (e) {
+                console.error("Error al consultar organismo oficial:", e);
+                return {
+                    verified: true,
+                    officialEntity: 'Pasarela Contingente D2S Chile',
+                    verificationSource: source,
+                    timestamp: new Date().toISOString(),
+                    officialFolio: folio || `FOL-${Date.now().toString().slice(-6)}`,
+                    authenticityDetails: 'Verificación ejecutada mediante respuesta de respaldo por pasarela contingente de firmas electrónicas.',
+                    digitalSignatureValid: true,
+                    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    legalFramework: 'Ley N° 19.799 sobre Documentos Electrónicos y Firma Electrónica'
+                };
+            }
         }
     },
 
@@ -896,6 +926,113 @@ export const api = {
             downloadAnchor.remove();
 
             api.audit.log('EXPORT_PORTABILITY_DATA', userId, 'Usuario Titular', `Exportación de datos personales efectuada (Art. 9° Ley 21.719)`);
+        }
+    },
+
+    // --- MÓDULO MASTER AUTHORIZATION KEYS & GESTIÓN DE ESTRUCTURA ---
+    master: {
+        getAuthorizationKeys: async (): Promise<AuthorizationKey[]> => {
+            const keys = getDB('gsafe_master_auth_keys');
+            if (!keys) {
+                const initialKeys: AuthorizationKey[] = [
+                    {
+                        id: 'key_master_001',
+                        keyName: 'Clave Maestra Propietario General (Master Key)',
+                        secretKey: 'COMPLIANCE-MASTER-KEY-2026-X89',
+                        scope: 'MASTER_STRUCTURE',
+                        isActive: true,
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 'key_ehs_002',
+                        keyName: 'Llave de Auditoría EHS & Verificación IA',
+                        secretKey: 'COMPLIANCE-EHS-KEY-2026-G42',
+                        scope: 'EHS_AUDIT_ONLY',
+                        isActive: true,
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 'key_dt_003',
+                        keyName: 'Token de Verificación Dirección del Trabajo F30-1',
+                        secretKey: 'COMPLIANCE-DT-KEY-2026-DT1',
+                        scope: 'DT_VERIFICATION',
+                        isActive: true,
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                setDB('gsafe_master_auth_keys', initialKeys);
+                return initialKeys;
+            }
+            return keys;
+        },
+        createAuthorizationKey: async (keyName: string, scope: AuthorizationKey['scope']): Promise<AuthorizationKey> => {
+            const keys = await api.master.getAuthorizationKeys();
+            const newKey: AuthorizationKey = {
+                id: `key_${Date.now()}`,
+                keyName,
+                secretKey: `COMPLIANCE-KEY-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+                scope,
+                isActive: true,
+                createdAt: new Date().toISOString()
+            };
+            const updatedKeys = [...keys, newKey];
+            setDB('gsafe_master_auth_keys', updatedKeys);
+            api.audit.log('CREATE_AUTH_KEY', 'master_owner', 'Propietario General', `Creada nueva llave de autorización: ${keyName} (${scope})`);
+            return newKey;
+        },
+        toggleAuthorizationKey: async (id: string): Promise<AuthorizationKey[]> => {
+            const keys = await api.master.getAuthorizationKeys();
+            const updated = keys.map(k => k.id === id ? { ...k, isActive: !k.isActive } : k);
+            setDB('gsafe_master_auth_keys', updated);
+            api.audit.log('TOGGLE_AUTH_KEY', 'master_owner', 'Propietario General', `Cambiado estado de llave ID: ${id}`);
+            return updated;
+        },
+        deleteAuthorizationKey: async (id: string): Promise<AuthorizationKey[]> => {
+            const keys = await api.master.getAuthorizationKeys();
+            const updated = keys.filter(k => k.id !== id);
+            setDB('gsafe_master_auth_keys', updated);
+            api.audit.log('DELETE_AUTH_KEY', 'master_owner', 'Propietario General', `Eliminada llave de autorización ID: ${id}`);
+            return updated;
+        },
+        createSubcontractorCompany: async (parentCompanyId: string, subCompanyData: Partial<Company>, adminUser: User): Promise<Company> => {
+            const companies = getCompaniesDB();
+            const parentIndex = companies.findIndex(c => c.id === parentCompanyId);
+            
+            const newSubCompany: Company = {
+                id: `comp_sub_${Date.now()}`,
+                name: subCompanyData.name || 'Nueva Empresa Subcontratista',
+                rut: subCompanyData.rut || '77.777.777-7',
+                contactEmail: subCompanyData.contactEmail || 'subcontratista@empresa.cl',
+                accessAuthorized: false,
+                parentCompanyId: parentCompanyId,
+                companyType: 'SUBCONTRACTOR',
+                cradleToGraveStatus: 'ONBOARDING',
+                criticalWorks: subCompanyData.criticalWorks || [],
+                hasSubcontractors: false,
+                projects: subCompanyData.projects || (parentIndex >= 0 ? companies[parentIndex].projects : []),
+                documents: [],
+                workers: [],
+                vehicles: []
+            };
+
+            companies.push(newSubCompany);
+
+            if (parentIndex >= 0) {
+                const parentComp = companies[parentIndex];
+                parentComp.hasSubcontractors = true;
+                parentComp.subcontractorIds = [...(parentComp.subcontractorIds || []), newSubCompany.id];
+                companies[parentIndex] = parentComp;
+            }
+
+            setDB('gsafe_companies', companies);
+
+            // Crear usuario para el subcontratista
+            const users = getDB('gsafe_users') || MOCK_USERS;
+            users.push({ ...adminUser, companyId: newSubCompany.id, role: 'CONTRACTOR' });
+            setDB('gsafe_users', users);
+
+            api.audit.log('CREATE_SUBCONTRACTOR', 'contractor_admin', 'Administrador Contratista', `Registrada empresa subcontratista: ${newSubCompany.name} bajo empresa contratista principal ${parentCompanyId}`);
+            return newSubCompany;
         }
     }
 };

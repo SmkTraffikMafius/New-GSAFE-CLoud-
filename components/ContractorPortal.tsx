@@ -3,10 +3,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Company, DocStatus, DocumentSubmission, EntityType, RequirementDef, ReqCategory, MonthlySafetyStats, CriticalWork, CRITICAL_WORKS_LABELS, Worker } from '../types';
 import { DocumentList } from './DocumentList';
 import { REQUIREMENTS } from '../mockData';
-import { Users, Building2, Truck, AlertTriangle, GraduationCap, HeartPulse, Scale, Plus, X, Save, FolderOpen, CheckCircle, Clock, AlertOctagon, ArrowUpRight, FileText, Activity, LayoutDashboard, ChevronRight, Calendar as CalendarIcon, Upload as UploadIcon, QrCode, Download, FileDown, ClipboardCheck, ShieldAlert, UserCog, Trash2 } from 'lucide-react';
+import { Users, Building2, Truck, AlertTriangle, GraduationCap, HeartPulse, Scale, Plus, X, Save, FolderOpen, CheckCircle, Clock, AlertOctagon, ArrowUpRight, FileText, Activity, LayoutDashboard, ChevronRight, Calendar as CalendarIcon, Upload as UploadIcon, QrCode, Download, FileDown, ClipboardCheck, ShieldAlert, UserCog, Trash2, Kanban, Grid, List, GitMerge, Network, BellRing } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { SafetyStatsModule } from './SafetyStatsModule';
 import { ComplianceCalendar } from './ComplianceCalendar';
+import { BentoGridView } from './BentoGridView';
+import { KanbanBoardView } from './KanbanBoardView';
+import { DocumentAlertSystem } from './DocumentAlertSystem';
+import { GlobalPerformanceReportModal } from './GlobalPerformanceReportModal';
 import { api } from '../services/api';
 
 interface Props {
@@ -33,12 +37,22 @@ const WORKER_ROLES = [
 ];
 
 export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWorker, onAddVehicle, onDeleteWorker, onDeleteVehicle, onRefresh }) => {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'company' | 'ehs' | 'workers' | 'vehicles' | 'calendar'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'company' | 'ehs' | 'workers' | 'vehicles' | 'calendar' | 'subcontractors' | 'alerts'>('dashboard');
+    const [showReportModal, setShowReportModal] = useState<boolean>(false);
+    const [moduleLayout, setModuleLayout] = useState<'bento' | 'kanban' | 'matrix'>('bento');
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [showWorkerForm, setShowWorkerForm] = useState(false);
     const [showVehicleForm, setShowVehicleForm] = useState(false);
     const [showSafetyModule, setShowSafetyModule] = useState(false);
     const [showQRModal, setShowQRModal] = useState<string | null>(null);
+    const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
+    
+    // Subcontractor Form
+    const [subName, setSubName] = useState('');
+    const [subRut, setSubRut] = useState('');
+    const [subEmail, setSubEmail] = useState('');
+    const [subPassword, setSubPassword] = useState('123');
+
     const [newWorker, setNewWorker] = useState({ firstName: '', lastName: '', rut: '', role: WORKER_ROLES[0] });
     const [newVehicle, setNewVehicle] = useState({ plate: '', model: '', type: '' });
     
@@ -354,13 +368,24 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                         <nav className="space-y-2">
                             <SidebarItem id="dashboard" label="Resumen" icon={LayoutDashboard} />
                             <div className="my-2 border-t border-gray-100 dark:border-slate-700"></div>
+                            <SidebarItem id="alerts" label="Alertas & Recordatorios" icon={BellRing} count={expiringDocs.count} />
                             <SidebarItem id="ehs" label="Gestión EHS" icon={ShieldAlert} />
                             <SidebarItem id="calendar" label="Vencimientos" icon={CalendarIcon} />
                             <div className="my-2 border-t border-gray-100 dark:border-slate-700"></div>
                             <SidebarItem id="company" label="Empresa" icon={Building2} />
                             <SidebarItem id="workers" label="Trabajadores" icon={Users} count={company.workers.length} />
                             <SidebarItem id="vehicles" label="Vehículos" icon={Truck} count={company.vehicles.length} />
+                            <SidebarItem id="subcontractors" label="Subcontratos" icon={GitMerge} count={company.subcontractorIds?.length || 0} />
                         </nav>
+                        
+                        <div className="mt-4">
+                            <button
+                                onClick={() => setShowReportModal(true)}
+                                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <FileText size={15} /> Generar Reporte PDF
+                            </button>
+                        </div>
                         
                         <div className="mt-8 bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 border border-blue-100 dark:border-blue-900">
                             <h4 className="text-blue-800 dark:text-blue-300 font-bold text-sm mb-2">Estado General</h4>
@@ -438,72 +463,130 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
 
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                         
+                        {/* TAB: ALERTS CENTER FOR CONTRACTOR / SUBCONTRACTOR */}
+                        {activeTab === 'alerts' && (
+                            <div className="space-y-6">
+                                <DocumentAlertSystem 
+                                    companies={[company]} 
+                                    currentRole="CONTRACTOR" 
+                                    userCompanyId={company.id}
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'dashboard' && dashboardStats && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex items-center justify-between md:col-span-2 relative overflow-hidden">
-                                        <div className="z-10">
-                                            <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cumplimiento Global</p>
-                                            <h3 className="text-4xl font-extrabold text-gray-900 dark:text-white mt-2">{dashboardStats.compliance}%</h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">De {dashboardStats.totalPotentialReqs} requisitos totales</p>
-                                            
-                                            <div className="flex gap-4 mt-6">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{dashboardStats.approved} Aprobados</span>
+                                {/* BARRA DE SELECCIÓN DE VISTA DE MÓDULOS */}
+                                <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
+                                    <span className="text-xs font-bold text-slate-300 flex items-center gap-2 pl-2">
+                                        <Grid size={16} className="text-blue-400" />
+                                        Modo de Visualización del Módulo:
+                                    </span>
+                                    <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                                        <button 
+                                            onClick={() => setModuleLayout('bento')}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${moduleLayout === 'bento' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                        >
+                                            <Grid size={14} /> Bento Grid
+                                        </button>
+                                        <button 
+                                            onClick={() => setModuleLayout('kanban')}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${moduleLayout === 'kanban' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                        >
+                                            <Kanban size={14} /> Tablero Kanban
+                                        </button>
+                                        <button 
+                                            onClick={() => setModuleLayout('matrix')}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${moduleLayout === 'matrix' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                        >
+                                            <List size={14} /> Matriz Clásica
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {moduleLayout === 'bento' && (
+                                    <BentoGridView 
+                                        company={company}
+                                        selectedProjectId={selectedProjectId}
+                                        onNavigateTab={(tab) => setActiveTab(tab as any)}
+                                    />
+                                )}
+
+                                {moduleLayout === 'kanban' && (
+                                    <KanbanBoardView 
+                                        company={company}
+                                        selectedProjectId={selectedProjectId}
+                                    />
+                                )}
+
+                                {moduleLayout === 'matrix' && (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex items-center justify-between md:col-span-2 relative overflow-hidden">
+                                                <div className="z-10">
+                                                    <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cumplimiento Global</p>
+                                                    <h3 className="text-4xl font-extrabold text-gray-900 dark:text-white mt-2">{dashboardStats.compliance}%</h3>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">De {dashboardStats.totalPotentialReqs} requisitos totales</p>
+                                                    
+                                                    <div className="flex gap-4 mt-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{dashboardStats.approved} Aprobados</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 rounded-full bg-gray-200 dark:bg-slate-600"></div>
+                                                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{dashboardStats.totalPotentialReqs - dashboardStats.approved} Pendientes</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-3 h-3 rounded-full bg-gray-200 dark:bg-slate-600"></div>
-                                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{dashboardStats.totalPotentialReqs - dashboardStats.approved} Pendientes</span>
+                                                <div className="h-32 w-32 mr-4">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart>
+                                                            <Pie data={chartData} innerRadius={35} outerRadius={55} dataKey="value" stroke="none">
+                                                                {chartData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                                                            </Pie>
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                                <div className="absolute right-0 top-0 w-32 h-32 bg-green-50 dark:bg-green-900/20 rounded-full mix-blend-multiply filter blur-3xl opacity-50 transform translate-x-1/2 -translate-y-1/2"></div>
+                                            </div>
+
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-center space-y-6">
+                                                <div>
+                                                    <p className="text-xs font-bold text-red-500 uppercase tracking-wide flex items-center gap-1"><AlertOctagon size={14}/> Rechazados</p>
+                                                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{dashboardStats.rejected}</p>
+                                                    <p className="text-xs text-gray-400">Requieren corrección</p>
+                                                </div>
+                                                <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
+                                                    <p className="text-xs font-bold text-yellow-500 uppercase tracking-wide flex items-center gap-1"><Clock size={14}/> En Revisión</p>
+                                                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{dashboardStats.inReview}</p>
+                                                    <p className="text-xs text-gray-400">Esperando validación</p>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="h-32 w-32 mr-4">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie data={chartData} innerRadius={35} outerRadius={55} dataKey="value" stroke="none">
-                                                        {chartData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                                                    </Pie>
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                        <div className="absolute right-0 top-0 w-32 h-32 bg-green-50 dark:bg-green-900/20 rounded-full mix-blend-multiply filter blur-3xl opacity-50 transform translate-x-1/2 -translate-y-1/2"></div>
-                                    </div>
 
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-center space-y-6">
-                                        <div>
-                                            <p className="text-xs font-bold text-red-500 uppercase tracking-wide flex items-center gap-1"><AlertOctagon size={14}/> Rechazados</p>
-                                            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{dashboardStats.rejected}</p>
-                                            <p className="text-xs text-gray-400">Requieren corrección</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <button onClick={() => setActiveTab('ehs')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
+                                                <div className="bg-teal-50 dark:bg-teal-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 mb-3 group-hover:bg-teal-600 group-hover:text-white transition-colors"><ShieldAlert size={20}/></div>
+                                                <h4 className="font-bold text-gray-900 dark:text-white">Gestión EHS</h4>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">MIPER, Procedimientos, SSO</p>
+                                                <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
+                                            </button>
+                                            <button onClick={() => setActiveTab('company')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
+                                                <div className="bg-blue-50 dark:bg-blue-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors"><Building2 size={20}/></div>
+                                                <h4 className="font-bold text-gray-900 dark:text-white">Carpeta Empresa</h4>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Contratos, Pólizas, RIOHS</p>
+                                                <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
+                                            </button>
+                                            <button onClick={() => setActiveTab('workers')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
+                                                <div className="bg-indigo-50 dark:bg-indigo-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Users size={20}/></div>
+                                                <h4 className="font-bold text-gray-900 dark:text-white">Trabajadores</h4>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Contratos, ODI, EPP, Exámenes</p>
+                                                <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
+                                            </button>
                                         </div>
-                                        <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
-                                            <p className="text-xs font-bold text-yellow-500 uppercase tracking-wide flex items-center gap-1"><Clock size={14}/> En Revisión</p>
-                                            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{dashboardStats.inReview}</p>
-                                            <p className="text-xs text-gray-400">Esperando validación</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <button onClick={() => setActiveTab('ehs')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
-                                        <div className="bg-teal-50 dark:bg-teal-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-teal-600 dark:text-teal-400 mb-3 group-hover:bg-teal-600 group-hover:text-white transition-colors"><ShieldAlert size={20}/></div>
-                                        <h4 className="font-bold text-gray-900 dark:text-white">Gestión EHS</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">MIPER, Procedimientos, SSO</p>
-                                        <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
-                                    </button>
-                                    <button onClick={() => setActiveTab('company')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
-                                        <div className="bg-blue-50 dark:bg-blue-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors"><Building2 size={20}/></div>
-                                        <h4 className="font-bold text-gray-900 dark:text-white">Carpeta Empresa</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Contratos, Pólizas, RIOHS</p>
-                                        <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
-                                    </button>
-                                    <button onClick={() => setActiveTab('workers')} className="group bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:border-blue-300 hover:shadow-md transition-all text-left">
-                                        <div className="bg-indigo-50 dark:bg-indigo-900/30 w-10 h-10 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3 group-hover:bg-indigo-600 group-hover:text-white transition-colors"><Users size={20}/></div>
-                                        <h4 className="font-bold text-gray-900 dark:text-white">Trabajadores</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Contratos, ODI, EPP, Exámenes</p>
-                                        <div className="mt-3 flex items-center text-xs text-blue-600 dark:text-blue-400 font-medium">Gestionar <ChevronRight size={14} className="ml-1"/></div>
-                                    </button>
-                                </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -668,9 +751,6 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <button onClick={() => setShowQRModal(worker.id)} className="p-2 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors" title="Ver Pase QR">
-                                                            <QrCode size={20} />
-                                                        </button>
                                                         {onDeleteWorker && (
                                                             <button onClick={() => onDeleteWorker(worker.id)} className="p-2 hover:bg-red-50 rounded text-slate-500 hover:text-red-600 transition-colors" title="Eliminar Trabajador">
                                                                 <Trash2 size={20} />
@@ -765,6 +845,144 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                                 </div>
                             </div>
                         )}
+
+                        {activeTab === 'subcontractors' && (
+                            <div className="space-y-6 animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                    <div>
+                                        <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold mb-1 uppercase">
+                                            <GitMerge size={16} /> Ley N° 20.123 de Subcontratación
+                                        </div>
+                                        <h2 className="text-xl font-bold text-white">Empresas Subcontratistas a Cargo</h2>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Registre y audite la documentación EHS, contratos y trabajadores de sus empresas subcontratadas.
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setShowSubcontractorModal(true)}
+                                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer shrink-0"
+                                    >
+                                        <Plus size={16} /> Registrar Subcontratista
+                                    </button>
+                                </div>
+
+                                {/* Form Modal Subcontratista */}
+                                {showSubcontractorModal && (
+                                    <div className="bg-slate-900 border border-amber-500/40 p-6 rounded-2xl space-y-4 animate-scaleUp">
+                                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                                            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                                                <GitMerge className="text-amber-400" size={18} /> Alta de Empresa Subcontratista
+                                            </h3>
+                                            <button onClick={() => setShowSubcontractorModal(false)} className="text-slate-400 hover:text-white">
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+
+                                        <form onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            if (!subName || !subRut || !subEmail) return;
+                                            try {
+                                                await api.master.createSubcontractorCompany(
+                                                    company.id,
+                                                    { name: subName, rut: subRut, contactEmail: subEmail },
+                                                    { id: `u_sub_${Date.now()}`, email: subEmail, password: subPassword, name: `Admin ${subName}`, role: 'CONTRACTOR' }
+                                                );
+                                                setShowSubcontractorModal(false);
+                                                setSubName('');
+                                                setSubRut('');
+                                                setSubEmail('');
+                                                if (onRefresh) onRefresh();
+                                            } catch (err) {
+                                                console.error("Error al registrar subcontratista", err);
+                                            }
+                                        }} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                            <div>
+                                                <label className="block text-slate-300 font-medium mb-1">Razón Social Subcontratista:</label>
+                                                <input 
+                                                    type="text"
+                                                    required
+                                                    placeholder="Ej: ElectroServicios SpA"
+                                                    value={subName}
+                                                    onChange={e => setSubName(e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 focus:border-amber-500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-slate-300 font-medium mb-1">RUT Empresa:</label>
+                                                <input 
+                                                    type="text"
+                                                    required
+                                                    placeholder="Ej: 77.888.999-3"
+                                                    value={subRut}
+                                                    onChange={e => setSubRut(e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 focus:border-amber-500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-slate-300 font-medium mb-1">Email de Contacto / Admin:</label>
+                                                <input 
+                                                    type="email"
+                                                    required
+                                                    placeholder="contacto@subcontratista.cl"
+                                                    value={subEmail}
+                                                    onChange={e => setSubEmail(e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 focus:border-amber-500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-slate-300 font-medium mb-1">Contraseña Inicial Portal:</label>
+                                                <input 
+                                                    type="text"
+                                                    required
+                                                    value={subPassword}
+                                                    onChange={e => setSubPassword(e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 focus:border-amber-500 font-mono"
+                                                />
+                                            </div>
+
+                                            <div className="sm:col-span-2 flex justify-end gap-2 pt-2 border-t border-slate-800">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setShowSubcontractorModal(false)}
+                                                    className="bg-slate-950 hover:bg-slate-800 text-slate-300 px-4 py-2 rounded-xl font-bold cursor-pointer"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button 
+                                                    type="submit"
+                                                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-2 rounded-xl cursor-pointer"
+                                                >
+                                                    Guardar Subcontratista
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                )}
+
+                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                                    <h3 className="font-bold text-white text-sm mb-4">Empresas Asignadas</h3>
+                                    <p className="text-xs text-slate-400 mb-4">
+                                        Las empresas subcontratistas ingresadas podrán acceder al portal con su correo corporativo para cargar su carpeta de arranque, antecedentes RIOHS, contratos de trabajo y solicitar autorización de ingreso en garita.
+                                    </p>
+                                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <GitMerge size={20} className="text-amber-400" />
+                                            <div>
+                                                <span className="font-bold text-white block">Subcontratación Cadena Abierta</span>
+                                                <span className="text-[11px] text-slate-400">Total subcontratistas vinculados a {company.name}: <strong>{company.subcontractorIds?.length || 0}</strong></span>
+                                            </div>
+                                        </div>
+                                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold px-3 py-1 rounded-full text-[10px]">
+                                            RESPONSABILIDAD SUBSIDIARIA ACTIVA
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -776,25 +994,13 @@ export const ContractorPortal: React.FC<Props> = ({ company, onUpload, onAddWork
                 onSaveStats={handleSaveStats}
             />
 
-            {showQRModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm p-4">
-                     <div className="bg-white rounded-xl shadow-2xl p-6 text-center max-w-sm w-full relative animate-in zoom-in-95">
-                        <button onClick={() => setShowQRModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20}/></button>
-                        <h3 className="text-lg font-bold mb-4">Pase de Acceso Digital</h3>
-                        {(() => {
-                            const w = company.workers.find(w => w.id === showQRModal);
-                            return w ? (
-                                <>
-                                    <img src={w.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${w.rut}`} alt="QR" className="mx-auto border-4 border-white shadow-lg rounded-lg mb-4" />
-                                    <p className="font-bold text-xl">{w.firstName} {w.lastName}</p>
-                                    <p className="text-gray-500">{w.role}</p>
-                                    <p className="text-sm font-mono mt-1 bg-gray-100 inline-block px-2 py-1 rounded">{w.rut}</p>
-                                </>
-                            ) : null;
-                        })()}
-                     </div>
-                </div>
-            )}
+            <GlobalPerformanceReportModal 
+                companies={[company]}
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                currentRole="CONTRACTOR"
+                userCompanyId={company.id}
+            />
         </div>
     );
 };

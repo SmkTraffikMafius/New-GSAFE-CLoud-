@@ -12,7 +12,13 @@ import { MandanteControlCenter } from './components/MandanteControlCenter';
 import { Chatbot } from './components/Chatbot';
 import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
 import { ArcoPortalModal } from './components/ArcoPortalModal';
-import { Construction, UserCircle, LogOut, Loader2, MailCheck, Bot, Moon, Sun, Globe, ShieldCheck, Lock } from 'lucide-react';
+import { LandingSalesPage } from './components/LandingSalesPage';
+import { ThemeSelectorModal } from './components/ThemeSelectorModal';
+import { THEMES, ThemeId } from './theme';
+import { MasterOwnerControlCenter } from './components/MasterOwnerControlCenter';
+import { ComplianceAudits } from './components/ComplianceAudits';
+import { GlobalPerformanceDashboard } from './components/GlobalPerformanceDashboard';
+import { Construction, UserCircle, LogOut, Loader2, MailCheck, Bot, Moon, Sun, Globe, ShieldCheck, Lock, Sparkles, Palette, Building2, Key, Network, FileText, BarChart3 } from 'lucide-react';
 
 const App: React.FC = () => {
     // --- ESTADO GLOBAL ---
@@ -22,13 +28,18 @@ const App: React.FC = () => {
     
     // --- ESTADO DE UI ---
     const [isLoading, setIsLoading] = useState<boolean>(true); 
+    const [showLandingPage, setShowLandingPage] = useState<boolean>(true); // Vista Comercial por defecto
     const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false); // Nuevo estado para IA
     const [authError, setAuthError] = useState<string | undefined>();
-    const [adminView, setAdminView] = useState<'LIST' | 'DASHBOARD' | 'CONTROL_CENTER'>('LIST');
+    const [adminView, setAdminView] = useState<'LIST' | 'DASHBOARD' | 'CONTROL_CENTER' | 'AUDITS' | 'GLOBAL_PERFORMANCE'>('LIST');
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
     const [emailError, setEmailError] = useState<string | null>(null);
     const [darkMode, setDarkMode] = useState(false); // DARK MODE STATE
+    const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => {
+        return (localStorage.getItem('compliance_app_theme') as ThemeId) || 'corporate';
+    });
+    const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
     
     // --- LEY 21.719 MODALES ---
     const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
@@ -67,6 +78,7 @@ const App: React.FC = () => {
                     const { user } = await api.auth.login(email, password);
                     if (user) {
                         setCurrentUser(user);
+                        setShowLandingPage(false);
                         if (user.role === 'ADMIN') {
                             setAdminView('LIST');
                         }
@@ -104,18 +116,24 @@ const App: React.FC = () => {
         };
     }, []);
 
-    // EFFECT: Handle Dark Mode
+    // EFFECT: Handle Dark Mode and Themes
     useEffect(() => {
+        const root = document.documentElement;
         if (darkMode) {
-            document.documentElement.classList.add('dark');
+            root.classList.add('dark');
             document.body.classList.add('bg-slate-900');
             document.body.classList.remove('bg-gray-50');
         } else {
-            document.documentElement.classList.remove('dark');
+            root.classList.remove('dark');
             document.body.classList.remove('bg-slate-900');
             document.body.classList.add('bg-gray-50');
         }
-    }, [darkMode]);
+
+        // Apply theme class
+        root.classList.remove('theme-corporate', 'theme-industrial', 'theme-emerald', 'theme-cybertech', 'theme-executive');
+        root.classList.add(`theme-${currentTheme}`);
+        localStorage.setItem('compliance_app_theme', currentTheme);
+    }, [darkMode, currentTheme]);
 
     const sendNotificationEmail = async (to: string, subject: string, body: string) => {
         try {
@@ -138,6 +156,7 @@ const App: React.FC = () => {
                 setAuthError(error || "Error desconocido");
             } else {
                 setCurrentUser(user);
+                setShowLandingPage(false);
                 setAuthError(undefined);
                 localStorage.setItem('compliance_auth_creds', JSON.stringify({ email, password: pass }));
                 if (user.role === 'ADMIN') {
@@ -159,6 +178,7 @@ const App: React.FC = () => {
             api.audit.log('LOGOUT', currentUser.id, currentUser.name, 'Cierre de sesión');
         }
         setCurrentUser(null);
+        setShowLandingPage(true);
         setAdminView('LIST');
         setSelectedCompanyId(null);
         setAuthError(undefined);
@@ -435,8 +455,48 @@ const App: React.FC = () => {
         );
     }
 
+    if (!currentUser && showLandingPage) {
+        return (
+            <LandingSalesPage 
+                onGoToLogin={() => setShowLandingPage(false)}
+                onQuickDemoAdmin={() => handleLogin('admin@compliance.cl', 'admin')}
+                onQuickDemoContractor={() => handleLogin('contacto@andes.cl', '123')}
+            />
+        );
+    }
+
     if (!currentUser) {
-        return <Login onLogin={handleLogin} error={authError} />;
+        return (
+            <Login 
+                onLogin={handleLogin} 
+                onGoToLanding={() => setShowLandingPage(true)}
+                error={authError} 
+            />
+        );
+    }
+
+    if (currentUser && showLandingPage) {
+        return (
+            <div className="relative">
+                <div className="bg-slate-900 border-b border-slate-800 text-white px-4 py-2 flex items-center justify-between z-[100] sticky top-0 text-xs">
+                    <span className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-yellow-400" />
+                        Vista de Presentación Comercial para Ventas (Sesión activa como <strong>{currentUser.name}</strong>)
+                    </span>
+                    <button 
+                        onClick={() => setShowLandingPage(false)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded-lg transition-colors"
+                    >
+                        Volver a Mi Panel de Control &rarr;
+                    </button>
+                </div>
+                <LandingSalesPage 
+                    onGoToLogin={() => setShowLandingPage(false)}
+                    onQuickDemoAdmin={() => { setShowLandingPage(false); setAdminView('LIST'); }}
+                    onQuickDemoContractor={() => { setShowLandingPage(false); }}
+                />
+            </div>
+        );
     }
 
     const currentCompany = currentUser.role === 'CONTRACTOR' 
@@ -519,7 +579,7 @@ const App: React.FC = () => {
                         <Construction className="text-yellow-400" />
                         Compliance<span className="text-gray-400 font-light">Cloud</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         {/* LEY 21.719 ARCO+P PORTAL BUTTON */}
                         <button 
                             onClick={() => setIsArcoModalOpen(true)} 
@@ -527,11 +587,21 @@ const App: React.FC = () => {
                             title="Portal de Derechos ARCO+P Ley 21.719"
                         >
                             <ShieldCheck size={16} className="text-emerald-400" />
-                            <span className="hidden md:inline">Derechos ARCO+P (Ley 21.719)</span>
+                            <span className="hidden md:inline">Ley 21.719</span>
                         </button>
 
-                        {/* THEME TOGGLE */}
-                        <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-slate-800 text-gray-400 hover:text-white transition-colors">
+                        {/* THEME SELECTOR BUTTON */}
+                        <button 
+                            onClick={() => setIsThemeModalOpen(true)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer hover:border-slate-500"
+                            title="Cambiar Tema Visual (5 opciones)"
+                        >
+                            <Palette size={16} className="text-purple-400" />
+                            <span className="hidden lg:inline">{THEMES[currentTheme].badgeText}</span>
+                        </button>
+
+                        {/* THEME TOGGLE (DARK/LIGHT) */}
+                        <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-slate-800 text-gray-400 hover:text-white transition-colors" title="Modo Claro / Oscuro">
                             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                         
@@ -559,16 +629,65 @@ const App: React.FC = () => {
                         <button
                             type="button"
                             onClick={handleLogout}
-                            className="ml-4 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
+                            className="ml-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
                         >
                             <LogOut size={14} /> Salir
                         </button>
                     </div>
                 </div>
+
+                {/* BARRA DE DEMOSTRACIÓN & SELECTOR DE ENTORNOS */}
+                <div className="bg-slate-950 border-t border-b border-slate-800/80 px-4 py-1.5">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-slate-400 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span className="text-slate-300 font-bold">Modo de Demostración Activo:</span>
+                            <span className="hidden md:inline text-slate-400">Alterna entre visiones para reuniones comerciales o pruebas.</span>
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                            <button 
+                                onClick={() => { setShowLandingPage(false); handleLogin('owner@compliance.cl', 'masterowner2026'); }}
+                                className={`px-3 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${currentUser.role === 'MASTER_ADMIN' ? 'bg-amber-500/30 text-amber-300 border-amber-500' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'}`}
+                            >
+                                <Key size={12} className="text-amber-400" />
+                                Master Owner (Llaves)
+                            </button>
+                            <button 
+                                onClick={() => { setShowLandingPage(false); handleLogin('admin@compliance.cl', 'admin'); }}
+                                className={`px-3 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${currentUser.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'}`}
+                            >
+                                <ShieldCheck size={12} className="text-amber-400" />
+                                Demo Mandante EHS
+                            </button>
+                            <button 
+                                onClick={() => { setShowLandingPage(false); handleLogin('contacto@andes.cl', '123'); }}
+                                className={`px-3 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${currentUser.role === 'CONTRACTOR' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'}`}
+                            >
+                                <Building2 size={12} className="text-emerald-400" />
+                                Demo Contratista
+                            </button>
+                            <button 
+                                onClick={() => { setShowLandingPage(false); handleLogin('sub@electro.cl', '123'); }}
+                                className={`px-3 py-1 rounded-lg border font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${currentUser.companyId === 'comp_sub1' ? 'bg-blue-500/20 text-blue-300 border-blue-500/50' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'}`}
+                            >
+                                <Network size={12} className="text-blue-400" />
+                                Demo Subcontratista
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             <main className="flex-grow">
-                {currentUser.role === 'ADMIN' ? (
+                {currentUser.role === 'MASTER_ADMIN' ? (
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <MasterOwnerControlCenter 
+                            companies={companies} 
+                            currentUser={currentUser} 
+                            onRefreshCompanies={refreshData} 
+                        />
+                    </div>
+                ) : currentUser.role === 'ADMIN' ? (
                     <>
                         {/* VIEW: COMPANY MANAGEMENT (CRUD) */}
                         {adminView === 'LIST' && (
@@ -582,7 +701,9 @@ const App: React.FC = () => {
                                     setAdminView('DASHBOARD');
                                 }}
                                 onAddProject={handleAddProject}
-                                onGoToControlCenter={() => setAdminView('CONTROL_CENTER')} // Nuevo Callback
+                                onGoToControlCenter={() => setAdminView('CONTROL_CENTER')}
+                                onGoToAudits={() => setAdminView('AUDITS')}
+                                onGoToGlobalPerformance={() => setAdminView('GLOBAL_PERFORMANCE')}
                             />
                         )}
 
@@ -592,6 +713,26 @@ const App: React.FC = () => {
                                 companies={companies}
                                 onBack={() => setAdminView('LIST')}
                             />
+                        )}
+
+                        {/* VIEW: GLOBAL PERFORMANCE DASHBOARD (D3 ANALYTICS) */}
+                        {adminView === 'GLOBAL_PERFORMANCE' && (
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                                <GlobalPerformanceDashboard 
+                                    companies={companies}
+                                    onBack={() => setAdminView('LIST')}
+                                />
+                            </div>
+                        )}
+
+                        {/* VIEW: AUDITS DASHBOARD (NEW) */}
+                        {adminView === 'AUDITS' && (
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                                <ComplianceAudits 
+                                    companies={companies}
+                                    onBack={() => setAdminView('LIST')}
+                                />
+                            </div>
                         )}
 
                         {/* VIEW: INDIVIDUAL COMPANY DASHBOARD (AUDIT) */}
@@ -677,6 +818,14 @@ const App: React.FC = () => {
                 currentUser={currentUser}
                 companies={companies}
                 onRefresh={refreshData}
+            />
+
+            {/* Modal de Temas Personalizados */}
+            <ThemeSelectorModal 
+                isOpen={isThemeModalOpen}
+                onClose={() => setIsThemeModalOpen(false)}
+                currentTheme={currentTheme}
+                onSelectTheme={(themeId) => setCurrentTheme(themeId)}
             />
         </div>
     );

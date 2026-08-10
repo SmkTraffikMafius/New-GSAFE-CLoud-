@@ -36,16 +36,31 @@ export const DocumentList: React.FC<Props> = ({ requirements, documents, entityI
     // Helper para encontrar el doc subido para un requisito
     const getDocForRequirement = (reqId: string) => documents.find(d => d.requirementId === reqId);
     
-    // Helper para verificar si está vencido o por vencer (solo visual)
+    // Helper para verificar si está vencido o por vencer
     const getExpiryStatus = (dateStr?: string) => {
         if (!dateStr) return null;
         const today = new Date();
         const expiry = new Date(dateStr);
         const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-        if (diffDays < 0) return { label: 'Vencido', color: 'text-red-600 bg-red-50 border-red-200' };
-        if (diffDays <= 30) return { label: 'Por Vencer', color: 'text-orange-600 bg-orange-50 border-orange-200' };
-        return { label: 'Vigente', color: 'text-green-600 bg-green-50 border-green-200' };
+        if (diffDays < 0) return { 
+            type: 'OVERDUE', 
+            label: `Vencido (${Math.abs(diffDays)}d)`, 
+            color: 'text-rose-700 bg-rose-100 border-rose-300 font-bold',
+            rowBg: 'bg-rose-50/70 border-l-4 border-l-rose-500' 
+        };
+        if (diffDays <= 30) return { 
+            type: 'EXPIRING_SOON', 
+            label: `Por Vencer (${diffDays}d)`, 
+            color: 'text-amber-800 bg-amber-100 border-amber-300 font-bold',
+            rowBg: 'bg-amber-50/70 border-l-4 border-l-amber-500' 
+        };
+        return { 
+            type: 'COMPLIANT', 
+            label: 'Vigente', 
+            color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+            rowBg: '' 
+        };
     };
 
     const handleOpenUpload = (reqId: string, reqName: string) => {
@@ -108,7 +123,7 @@ export const DocumentList: React.FC<Props> = ({ requirements, documents, entityI
                                 const expiryInfo = doc?.expiryDate ? getExpiryStatus(doc.expiryDate) : null;
 
                                 return (
-                                    <tr key={req.id}>
+                                    <tr key={req.id} className={expiryInfo?.rowBg || 'hover:bg-slate-50 transition-colors'}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
                                                 <div className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg overflow-hidden ${doc ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
